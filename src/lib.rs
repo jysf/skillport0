@@ -5,12 +5,14 @@
 //! specs add the walker, rule engine, report, and CLI on top; nothing here
 //! judges a skill or emits findings.
 
+pub mod emit;
 pub mod parse;
 pub mod report;
 pub mod rules;
 pub mod skill;
 pub mod walk;
 
+pub use emit::{human, json};
 pub use parse::parse;
 pub use report::{Finding, Report, Section, Severity, Summary};
 pub use rules::lint_skill;

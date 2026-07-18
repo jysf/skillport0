@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -57,6 +57,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent; orchestrator fills real tokens_total/estimated_usd/duration_minutes from the Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -157,21 +165,21 @@ substrate).
 
 ## Acceptance Criteria
 
-- [ ] `skillport lint <PATH>` walks the path, runs `lint_skill` over the
+- [x] `skillport lint <PATH>` walks the path, runs `lint_skill` over the
       collection via `Report::from_collection`, and prints a human report.
-- [ ] `--json` emits the exact schema above (parseable; `tool`/`version`/`schema`/
+- [x] `--json` emits the exact schema above (parseable; `tool`/`version`/`schema`/
       `target`/`summary`/`sections` present; severities lowercase strings).
-- [ ] **Exit codes:** clean → 0; any error → 1; warning-only → 0 but → 1 under
+- [x] **Exit codes:** clean → 0; any error → 1; warning-only → 0 but → 1 under
       `--strict`; `<PATH>` missing → 2 (with a stderr message, nothing on stdout).
-- [ ] Results on **stdout**, diagnostics/usage errors on **stderr** (machine
+- [x] Results on **stdout**, diagnostics/usage errors on **stderr** (machine
       consumers read stdout only).
-- [ ] Deterministic: same input → byte-identical stdout (human and `--json`).
-- [ ] `--json` and human report the same findings/counts; `--strict` changes only
+- [x] Deterministic: same input → byte-identical stdout (human and `--json`).
+- [x] `--json` and human report the same findings/counts; `--strict` changes only
       the exit code, not the bytes emitted.
-- [ ] No `convert`/`push`/`profiles` subcommands (DEC-001) — only `lint` (leave the
+- [x] No `convert`/`push`/`profiles` subcommands (DEC-001) — only `lint` (leave the
       command structure open for `audit` later).
-- [ ] `DEC-008` authored for `clap` + `serde_json` (+ `serde`); deps permissive.
-- [ ] A path with no `SKILL.md` → 0 sections, summary all zero, exit 0 (human
+- [x] `DEC-008` authored for `clap` + `serde_json` (+ `serde`); deps permissive.
+- [x] A path with no `SKILL.md` → 0 sections, summary all zero, exit 0 (human
       output notes "no skills found"; `--json` still valid).
 
 ## Failing Tests
@@ -269,28 +277,51 @@ approach is preferred for separation.)
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-005-cli`
+- **PR (if applicable):** not opened this cycle (build cycle only, per prompt)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - `DEC-008` — CLI arg parsing with `clap` (derive), `--json` output with
+    `serde` + `serde_json`
 - **Deviations from spec:**
-  - [list]
+  - Added one new fixture, `lint-fixtures/warn-only/mismatched-name/SKILL.md`
+    (name valid but `!= dir`, otherwise a fully valid skill), as anticipated by
+    the spec's Notes/Failing Tests for the `--strict` warning-only test. No
+    existing fixture was warning-only-clean, so this was required, not
+    optional.
+  - `src/lib.rs`'s top-of-file doc comment was left unchanged (still says
+    "Later specs add ... the CLI on top") — cosmetic only, not part of any
+    acceptance criterion; flagged as a trivial follow-up below rather than
+    touched out of caution against unrelated churn.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - SPEC-006 (already slated): `metadata.*`, `allowed-tools.*`, `body.*`,
+    `frontmatter.unknown` rules — `lint_skill` grows, CLI/emitter unchanged.
+  - Minor: refresh `src/lib.rs`'s module doc comment now that the CLI exists
+    (cosmetic; not gating).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing blocking. The one soft ambiguity was which existing fixture(s)
+   the `--strict` warning-only test should point at — none of
+   `lint-fixtures/good` or `lint-fixtures/bad` is warning-only-clean (good has
+   zero findings at all; bad has several errors alongside its one warning), so
+   a new fixture was clearly needed, exactly as the spec's Notes anticipated
+   ("Add a fixture under `lint-fixtures/` if needed").
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No. `deterministic-stable-output`, `no-new-top-level-deps-without-decision`,
+   and `test-before-implementation` fully covered the design space; DEC-001/
+   DEC-003/DEC-005 gave unambiguous answers for scope, exit codes, and the
+   JSON contract.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing structural. I'd consider naming the new fixture directory
+   `lint-fixtures/warn-only/` from the start with an eye toward SPEC-006 adding
+   more warning-only cases there (already done), so it reads as a deliberate
+   fixture category rather than a one-off.
 
 ---
 

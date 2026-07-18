@@ -11,6 +11,11 @@ repository = "https://github.com/agentskills/skillport"
 serde_yaml_ng = "0.10"
 # Insertion-order-preserving map for lossless, order-preserving frontmatter (DEC-004). See DEC-007.
 indexmap = "2"
+# CLI arg parsing (derive API) for the `skillport lint` command. See DEC-008.
+clap = { version = "4", features = ["derive"] }
+# Stable --json output serialization (emitter-local DTOs only). See DEC-008.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [dev-dependencies]
 # Hermetic temp-tree fixtures for walk() tests only; not a runtime dependency.
