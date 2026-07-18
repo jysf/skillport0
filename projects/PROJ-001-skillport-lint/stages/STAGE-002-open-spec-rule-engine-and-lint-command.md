@@ -119,11 +119,11 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 - [x] SPEC-005 (shipped 2026-07-18, PR #5) — **`lint` command** (clap) + human &
   `--json` emitters + exit codes + `--strict`, implementing `docs/api-contract.md`.
   `skillport lint <path>` is runnable. Added clap + serde + serde_json (DEC-008).
-- [ ] (not yet written) — SPEC-006: remaining rules `metadata.*`,
-  `allowed-tools.format`, `body.*` (`body.size` line-count only; tokenizer is
-  STAGE-003), `frontmatter.unknown` (open field set; `--target` widening is
-  STAGE-003). **Also:** `compatibility.type` (deferred from SPEC-004) and tighten
-  `name.charset` to ASCII if the spec text confirms (signal `name-charset-ascii`).
+- [~] SPEC-006 (design) — remaining open-spec rules into `lint_skill`:
+  `metadata.type`/`metadata.values`, `allowed-tools.format`/`allowed-tools.type`,
+  `body.empty`/`body.lines`, `frontmatter.unknown` (open field set),
+  `compatibility.type` (deferred from SPEC-004), and tighten `name.charset` to ASCII
+  (resolves `name-charset-ascii`). `body.size` + `--target` widening stay STAGE-003.
 - [ ] (not yet written) — `key.duplicate` rule *(follow-up from SPEC-001)* — the
   parser lets a duplicate frontmatter key take last-write-wins; flag duplicates
   (warning). Decide severity against the spec.
