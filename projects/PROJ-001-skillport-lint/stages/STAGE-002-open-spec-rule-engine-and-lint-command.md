@@ -5,7 +5,7 @@
 
 stage:
   id: STAGE-002                     # stable, zero-padded, continuous across the repo
-  status: proposed                  # proposed | active | shipped | cancelled | on_hold
+  status: active                    # proposed | active | shipped | cancelled | on_hold
   priority: high                    # critical | high | medium | low
   target_complete: null             # optional: YYYY-MM-DD
 
@@ -113,19 +113,23 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 > Proposed decomposition — the Design cycle turns these into specs via
 > `just new-spec "<title>" STAGE-002`. Not yet scaffolded.
 
-- [ ] (not yet written) — Rule engine skeleton: rule registration, iterate rules
-  over a `Skill`, collect findings with stable ids.
-- [ ] (not yet written) — `name.*`, `description.*`, `compatibility.length` rules.
-- [ ] (not yet written) — `metadata.*`, `allowed-tools.format`, `frontmatter.*`
-  (against open field set), `body.*` rules.
-- [ ] (not yet written) — `lint` command (clap) wiring walker → engine → report,
-  single/folder/tree.
+- [~] SPEC-004 (design) — Rule engine (`lint_skill` = the `rule_fn`) + frontmatter
+  presence (three `frontmatter.*` ids) + `name.*` + `description.*` +
+  `compatibility.length`. Locks the empty-`Present` decision (name/description-
+  required, not frontmatter.missing).
+- [ ] (not yet written) — SPEC-005: `metadata.*`, `allowed-tools.format`, `body.*`
+  (`body.size` line-count only here; tokenizer is STAGE-003), `frontmatter.unknown`
+  (against the open field set; `--target` widening is STAGE-003).
+- [ ] (not yet written) — `lint` command (clap) wiring walk → `lint_skill` →
+  `Report::from_collection`, single/folder/tree.
 - [ ] (not yet written) — Human + `--json` emitters, exit codes, `--strict`.
 - [ ] (not yet written) — `key.duplicate` rule *(follow-up from SPEC-001)* — the
   parser lets a duplicate frontmatter key take last-write-wins; flag duplicates
-  (warning) so they aren't silently dropped. Decide severity against the spec.
+  (warning). Decide severity against the spec.
+- [ ] (not yet written) — decide whether a permission-denied subtree → finding
+  (signal `walk-unreadable-dirs`), alongside `file.unreadable`.
 
-**Count:** 0 shipped / 0 active / 6 pending
+**Count:** 0 shipped / 1 in design / 5 pending
 
 ## Design Notes
 
