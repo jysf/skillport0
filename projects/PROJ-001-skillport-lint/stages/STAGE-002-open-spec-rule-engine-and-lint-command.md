@@ -124,15 +124,18 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
   `body.empty`/`.lines`, `frontmatter.unknown`, `compatibility.type`; tightened
   `name.charset` to ASCII (resolved `name-charset-ascii`). **Open-spec catalog
   complete.** `body.size` + `--target` widening are STAGE-003.
-- [ ] (not yet written) — `key.duplicate` rule *(follow-up from SPEC-001)* — the
-  parser lets a duplicate frontmatter key take last-write-wins; flag duplicates
-  (warning). Decide severity against the spec.
-- [ ] (not yet written) — decide whether a permission-denied subtree → finding
-  (signal `walk-unreadable-dirs`), alongside `file.unreadable`.
+- [x] ~~`key.duplicate` rule~~ — **CLOSED as resolved-redundant (SPEC-007 design).**
+  The parser does NOT take last-write-wins; `serde_yaml_ng` rejects duplicate keys,
+  so a duplicate already surfaces as `frontmatter.invalid` (error, message names the
+  key). A separate rule would add redundant public surface (DEC-005) — not added.
+- [~] SPEC-007 (design) — perm-denied subtree → `dir.unreadable` **warning** finding
+  (resolves signal `walk-unreadable-dirs`): the walk records an unreadable directory
+  instead of silently skipping it, so `lint` never claims clean coverage it didn't
+  have. Extends `CollectionItem` + `Report::from_collection`. **Last STAGE-002 spec.**
 
-**Count:** 3 shipped / 0 active / 3 pending (remaining: `key.duplicate` rule,
-perm-denied-subtree decision — both minor follow-ups; the stage's core deliverable,
-`lint` enforcing the full open catalog, is done.)
+**Count:** 3 shipped / 1 in design / 0 pending (`key.duplicate` closed as
+resolved-redundant; SPEC-007 is the last STAGE-002 spec — after it, only the
+STAGE-003-owned `body.size`/`--target` remain of the open-spec plan).
 
 ## Design Notes
 
