@@ -7,7 +7,7 @@
 task:
   id: SPEC-006
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -60,15 +60,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 97632
+      estimated_usd: 0.64
+      duration_minutes: 17
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (blended order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 74171
+      estimated_usd: 0.49
+      duration_minutes: 6
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (independent review incl. running the binary; APPROVED, 0 punch-list)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 171803
+    estimated_usd: 1.13
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-006: remaining open-spec rules metadata tools body unknown
@@ -322,16 +339,23 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Nothing notable — the additive-to-`lint_skill` shape (SPEC-003's `rule_fn`
+   seam + SPEC-004's structure) meant this spec only touched `rules.rs`, the CLI
+   rendered the new findings for free, and verify's main job was catching a
+   regression risk (the good fixture staying clean). Clean, tight increment.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — `name-charset-ascii` (watch lesson) is now **resolved** — `name.charset` was
+   tightened to strict ASCII this spec; I've marked the signal accordingly. No new
+   decision/constraint. The `allowed-tools.type` extension mirrors SPEC-004's
+   `frontmatter.*` split and was pre-declared in the spec table, so no surprise.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — The open-spec catalog is now complete. Remaining STAGE-002 backlog items are
+   minor: the `key.duplicate` rule and the perm-denied-subtree decision
+   (`walk-unreadable-dirs`). STAGE-003 is the bigger next block (`--target claude`
+   verified, real-tokenizer `body.size`, `--sarif`, GitHub Action, README/rule-id
+   table). Both already in the backlogs.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:

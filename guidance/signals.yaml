@@ -148,9 +148,9 @@ signals:
     summary: "name.charset uses is_alphanumeric() && !is_uppercase(), which accepts non-ASCII lowercase letters/digits (café, Arabic-Indic digits) — the open spec likely means ASCII [a-z0-9-]."
     evidence: "N=1 (SPEC-004 verify observation) — faithful port of initial_stuff/lint.rs, which the spec instructed to mirror; not covered by an AC/test."
     bar: "N=3 same-outcome"
-    status: watch
+    status: codified
     disposition_at: stage-close
     first_flagged: 2026-07-18
     last_touched: 2026-07-18
     raised_by: claude
-    notes: "Confirm against agentskills.io spec text, then tighten to ASCII in SPEC-005 (with the rest of the catalog) or a follow-up. Broader pattern to watch: 'faithful prototype port' can carry the prototype's latent bugs — verify ported logic against the spec, not just the prototype."
+    notes: "RESOLVED at SPEC-006 (2026-07-18): name.charset tightened to strict ASCII [a-z0-9-]. The broader pattern — 'faithful prototype port can carry the prototype's latent bugs; verify ported logic against the spec, not just the prototype' — is the lasting lesson; keep it in mind for any future prototype ports."
