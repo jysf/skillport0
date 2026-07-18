@@ -1,0 +1,70 @@
+# .repo-context.yaml
+# Describes the APP (the repo itself). Persists across all projects run
+# against this app. Forward-compatible with ContextCore's ProjectContext CRD.
+#
+# Projects (waves of work against this app) live in ./projects/<id>/ and
+# each has its own brief.md.
+
+apiVersion: contextcore.io/v2
+kind: RepoContext
+
+metadata:
+  repo:
+    id: skillport
+    name: "skillport"
+    purpose: "A fast Rust CLI that validates (lint) and audits agent Skills (SKILL.md files) against the open Agent Skills spec, with per-platform awareness and bulk/CI ergonomics."
+    url: "github.com/jysf/skillport"
+
+  business:
+    criticality: medium
+    owner: jysf
+    contacts:
+      - "jyashinsky@gmail.com"
+
+spec:
+  stack:
+    language: "rust (edition 2021)"
+    runtime: "native static binary (cargo build --release)"
+    framework: "clap 4 (CLI)"
+    database: "none"
+    hosting: "distributed as a single binary (crates.io / GitHub releases)"
+
+  # Agent + cost model config. Defaults reproduce the Claude-Code workflow;
+  # this repo runs claude-only.
+  agent:
+    default_model: claude-opus-4-7    # stamped into new specs/patches' agents.*
+    tier_map:
+      design: claude-opus-4-7
+      build: claude-sonnet-4-6
+      verify: claude-opus-4-7
+  cost:
+    metering_source: subagent_tokens
+    rate_per_mtok: 6.60
+    currency: USD
+
+  # How THIS app versions its own releases. semver (not the template default
+  # calver): skillport exposes a public contract that consumers gate CI on —
+  # the --json finding schema, the rule ids, and the exit codes. A breaking
+  # change to any of those must be signalled by a MAJOR bump; additive rules
+  # are MINOR. See app DEC-005 (stable output) and docs/versioning.md.
+  version:
+    scheme: semver
+    # current: null                   # optional pin; else derived from git tags
+
+  accomplishments:
+    enabled: true
+    tool: brag
+
+  # Standard paths; do not change without also updating AGENTS.md.
+  paths:
+    agents_md: ./AGENTS.md
+    docs: ./docs
+    guidance: ./guidance
+    decisions: ./decisions
+    projects: ./projects
+    templates: ./projects/_templates
+
+  observability:
+    sampling: null
+    alert_routing: null
+    runbook_base: null

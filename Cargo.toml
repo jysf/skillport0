@@ -1,0 +1,13 @@
+[package]
+name = "skillport"
+version = "0.1.0"
+edition = "2021"
+description = "Validate and audit agent SKILL.md files (tolerant, lossless parser substrate)."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/agentskills/skillport"
+
+[dependencies]
+# YAML frontmatter parsing. NOT serde_yaml (deprecated/unmaintained). See DEC-007.
+serde_yaml_ng = "0.10"
+# Insertion-order-preserving map for lossless, order-preserving frontmatter (DEC-004). See DEC-007.
+indexmap = "2"

@@ -1,0 +1,99 @@
+# guidance/constraints.yaml
+# Repo-level rules that all agents (and humans) working in this repo
+# must follow. Maps to ContextCore agentGuidance.constraints.
+#
+# Every constraint MUST have:
+#   - id: stable kebab-case identifier
+#   - rule: one sentence
+#   - severity: blocking | warning | advisory
+#   - paths: glob list (use ["**"] for repo-wide)
+#   - added_by: human | claude | <agent-id>
+#   - added_at: YYYY-MM-DD
+#   - rationale: why (link to DEC-XXX preferred)
+#
+# Severity is about ENFORCEMENT, not planning priority. If a plan rates a
+# constraint critical/high/medium/low, map it to a severity here:
+#   critical, high -> blocking   (a violation fails the gate; must not merge)
+#   medium         -> warning    (flagged; should fix, does not block)
+#   low            -> advisory   (opt-in / nice-to-have)
+
+constraints:
+  - id: no-secrets-in-code
+    rule: "Never commit API keys, tokens, passwords, or credentials. Use environment variables referenced via .env.example."
+    severity: blocking
+    paths: ["**"]
+    added_by: human
+    added_at: 2026-04-19
+    rationale: "Baseline security hygiene."
+
+  - id: only-verified-constraints-are-firm
+    rule: "A rule may be emitted at error or warning severity ONLY if it is backed by the open Agent Skills spec (agentskills.io) or a cited line from a platform's primary docs. Any unverified per-platform behavior must be emitted at info severity with a source comment — never error or warning."
+    severity: blocking
+    paths: ["src/**"]
+    added_by: claude
+    added_at: 2026-07-17
+    rationale: "skillport's trust depends on never asserting an unverified constraint as a failure. See DEC-002. The prototype's claude/cursor/codex/vercel profiles are unverified guesses until confirmed from primary docs."
+
+  - id: no-heuristic-error
+    rule: "No heuristic or analytical finding (overlap, coherence, 'looks dead', soft size guidance) may be emitted at error severity. Errors are reserved for crisp, mechanical spec violations that gate CI; heuristics are advisory (info) and belong in the audit report."
+    severity: blocking
+    paths: ["src/**"]
+    added_by: claude
+    added_at: 2026-07-17
+    rationale: "A heuristic promoted to a CI gate produces false failures and gets disabled wholesale. See DEC-003."
+
+  - id: collection-first-substrate
+    rule: "The tree-walker returns a COLLECTION of skills (never a bare single skill), the report layer takes N skills with sections, and every rule/finding carries a stable id. Do not build lint as a single-file linter with a folder loop bolted on."
+    severity: warning
+    paths: ["src/**"]
+    added_by: claude
+    added_at: 2026-07-17
+    rationale: "PROJ-002's audit must be an additive layer, not a refactor. See DEC-004."
+
+  - id: deterministic-stable-output
+    rule: "Output is deterministic: results sorted by path, a stable/versioned --json schema, and a bulk run must never abort on one malformed skill (report it as a per-file finding and continue). Breaking the --json schema, rule ids, or exit codes requires a MAJOR version bump."
+    severity: blocking
+    paths: ["src/**"]
+    added_by: claude
+    added_at: 2026-07-17
+    rationale: "The JSON schema, rule ids, and exit codes are a public CI contract. See DEC-005."
+
+  - id: test-before-implementation
+    rule: "Failing tests are written as part of the spec during design. Implementation makes those tests pass. Do not skip this order."
+    severity: blocking
+    paths: ["**"]
+    added_by: human
+    added_at: 2026-04-19
+    rationale: "TDD discipline; provides automatic verification of acceptance criteria."
+
+  - id: no-new-top-level-deps-without-decision
+    rule: "Do not add a new top-level RUNTIME dependency (package.json, pyproject.toml, etc.) without first emitting a DEC-XXX file justifying the choice. Exception (DEC-004 rule 4): a build cycle MAY add a clearly-trivial DEV-only dependency (types packages, test utilities — never a runtime dep) AND author its DEC in the same pass, with no stop-and-ask, so a non-interactive sub-agent isn't driven to a workaround."
+    severity: warning
+    paths: ["package.json", "pyproject.toml", "Cargo.toml", "go.mod"]
+    added_by: claude
+    added_at: 2026-04-19
+    rationale: "Dependencies are forever — force deliberation on runtime choices. But a hard stop-and-ask on a trivial dev/types dep drives a non-interactive build sub-agent to a workaround review must undo (DEC-004 rule 4, e.g. the @types/node stub). Sanctioning the dev-only + DEC-in-one-pass path keeps the constraint's teeth for real (runtime) deps while unblocking delegated build."
+
+  - id: one-spec-per-pr
+    rule: "Each PR must reference exactly one SPEC-XXX in its description. Bundled changes are rejected."
+    severity: blocking
+    paths: ["**"]
+    added_by: human
+    added_at: 2026-04-19
+    rationale: "Keeps review loop tractable and traceable."
+
+  - id: cost-captured-per-cycle
+    rule: "Every shipped spec must record a real `tokens_total` on its metered cycles (build, verify) in `cost.sessions` — the orchestrator fills it from the Agent result's subagent_tokens (or `/cost`) at ship. Only un-metered main-loop cycles (design, ship) may be null-with-note. Enforced by `just cost-audit` (CI job `cost-data`)."
+    severity: warning
+    paths: ["projects/**/specs/**"]
+    added_by: claude
+    added_at: 2026-06-17
+    rationale: "Cost tracking is structurally present but silently goes empty when documentation alone asks for it (all-null numerics). A check makes it stick — the same pattern as wiring a license policy into CI. See AGENTS.md §4 and docs/cost-tracking.md."
+
+  - id: license-policy
+    rule: "If this project pulls in third-party dependencies, define an allowed-license policy (typically permissive-only: MIT / Apache-2.0 / BSD / ISC / Zlib) and enforce it in CI with your ecosystem's tool — cargo-deny (Rust), pip-licenses / pip-audit (Python), license-checker (Node), go-licenses (Go). Any dependency outside the policy fails the build unless explicitly excepted."
+    severity: advisory
+    paths: ["**"]
+    added_by: claude
+    added_at: 2026-06-17
+    rationale: "A copyleft (GPL/AGPL) dependency can silently relicense a statically-linked binary, and license drift is invisible until an audit. Make the policy mechanical. The tool is per-language — see docs/license-policy.md (includes a Rust cargo-deny worked example)."

@@ -1,0 +1,89 @@
+# guidance/questions.yaml
+# Open questions under active investigation. Agents can see what we're
+# still figuring out and avoid re-deriving answers in isolation.
+#
+# Every question MUST have:
+#   - id: stable kebab-case identifier
+#   - question: the question in one sentence
+#   - priority: critical | high | medium | low
+#   - status: open | investigating | answered
+#   - raised_by: human | claude | <agent-id>
+#   - raised_at: YYYY-MM-DD
+#   - assigned_to: null | <agent-id> | <human>
+#
+# When a question is answered, either:
+#   (a) update status to "answered" and link to the DEC-XXX that records the answer, or
+#   (b) delete the question if it was resolved without a formal decision.
+
+questions:
+  # ---- PROJ-001 Frame questions (answered by human 2026-07-17) ----
+  - id: p1-first-target-platform
+    question: "Which single platform do we verify from primary docs and support first for --target?"
+    priority: high
+    status: answered
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+    notes: |
+      ANSWER: Claude Code first. Verify its recognized frontmatter fields from
+      docs.claude.com before encoding them firmly. Other platforms remain
+      advisory field-recognizers until similarly verified (DEC-002).
+
+  - id: p1-token-size-estimate
+    question: "Does body.size use a rough chars/words heuristic or a real tokenizer?"
+    priority: medium
+    status: answered
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+    notes: |
+      ANSWER: Real tokenizer (accurate token count), still emitted at info
+      severity per DEC-003. Adds a tokenizer dependency — author a DEC for the
+      crate choice per no-new-top-level-deps-without-decision.
+
+  - id: p1-extras-scope
+    question: "Do --fix / SARIF / GitHub Action stay out of PROJ-001?"
+    priority: medium
+    status: answered
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+    notes: |
+      ANSWER: SARIF output and a GitHub Action are IN PROJ-001 (Stage 3 DX).
+      --fix autofix stays OUT (deferred) — it needs a lossless round-trip writer
+      and careful safe-fix selection.
+
+  # ---- PROJ-002 Frame questions (open; answer when PROJ-002 is framed) ----
+  - id: p2-audit-command-shape
+    question: "One `audit` command with sections + a --security flag, or split audit (health) from a separate provenance/sbom command?"
+    priority: medium
+    status: open
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+    notes: "Lean: one command, sections, focus flags — provenance and permissions reinforce each other."
+
+  - id: p2-lockfile-format-location
+    question: "Lockfile format and location — .skillport.lock (TOML/JSON?) at the audited root; committed or not?"
+    priority: medium
+    status: open
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+
+  - id: p2-overlap-detection-method
+    question: "Description overlap detection — exact/normalized string match to start, or embed for semantic similarity later?"
+    priority: medium
+    status: open
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null
+    notes: "Lean: start lexical, no ML dependency."
+
+  - id: p2-recognized-source-set
+    question: "What counts as a recognized 'source' for provenance (git remote, registry, local)? Define the minimal viable set."
+    priority: medium
+    status: open
+    raised_by: claude
+    raised_at: 2026-07-17
+    assigned_to: null

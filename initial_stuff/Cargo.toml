@@ -1,0 +1,21 @@
+[package]
+name = "skillport"
+version = "0.1.0"
+edition = "2021"
+description = "Convert and sync agent SKILL.md files between platform formats (Claude, Cursor, Codex, Vercel, open spec)."
+license = "MIT"
+
+[[bin]]
+name = "skillport"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "=4.5.20", features = ["derive"] }
+serde = "=1.0.210"
+serde_yaml = "=0.9.34"
+anyhow = "1"
+# Pins for the Rust 1.75 toolchain (newer releases require edition2024):
+indexmap = "=2.2.6"
+
+[profile.release]
+strip = true
