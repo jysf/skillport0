@@ -116,21 +116,22 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 - [x] SPEC-004 (shipped 2026-07-18, PR #4) — Rule engine (`lint_skill` = the
   `rule_fn`) + frontmatter presence (three `frontmatter.*` ids) + `name.*` +
   `description.*` + `compatibility.length`. Locked the empty-`Present` decision.
-- [ ] (not yet written) — SPEC-005: `metadata.*`, `allowed-tools.format`, `body.*`
-  (`body.size` line-count only here; tokenizer is STAGE-003), `frontmatter.unknown`
-  (against the open field set; `--target` widening is STAGE-003). **Also:** add
-  `compatibility.type` (non-string, deferred from SPEC-004) and tighten
+- [~] SPEC-005 (design) — **`lint` command** (clap) + human & `--json` emitters +
+  exit codes + `--strict`, implementing `docs/api-contract.md`. Pulled ahead of the
+  remaining rules so `skillport lint <path>` is runnable. Adds clap + serde_json
+  (DEC-008). *(Combines the former "lint command" + "emitters" backlog items.)*
+- [ ] (not yet written) — SPEC-006: remaining rules `metadata.*`,
+  `allowed-tools.format`, `body.*` (`body.size` line-count only; tokenizer is
+  STAGE-003), `frontmatter.unknown` (open field set; `--target` widening is
+  STAGE-003). **Also:** `compatibility.type` (deferred from SPEC-004) and tighten
   `name.charset` to ASCII if the spec text confirms (signal `name-charset-ascii`).
-- [ ] (not yet written) — `lint` command (clap) wiring walk → `lint_skill` →
-  `Report::from_collection`, single/folder/tree.
-- [ ] (not yet written) — Human + `--json` emitters, exit codes, `--strict`.
 - [ ] (not yet written) — `key.duplicate` rule *(follow-up from SPEC-001)* — the
   parser lets a duplicate frontmatter key take last-write-wins; flag duplicates
   (warning). Decide severity against the spec.
 - [ ] (not yet written) — decide whether a permission-denied subtree → finding
   (signal `walk-unreadable-dirs`), alongside `file.unreadable`.
 
-**Count:** 1 shipped / 0 active / 5 pending
+**Count:** 1 shipped / 1 in design / 4 pending
 
 ## Design Notes
 
