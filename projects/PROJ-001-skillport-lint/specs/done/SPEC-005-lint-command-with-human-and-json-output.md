@@ -7,7 +7,7 @@
 task:
   id: SPEC-005
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -60,15 +60,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 128854
+      estimated_usd: 0.85
+      duration_minutes: 92
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (blended order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 80018
+      estimated_usd: 0.53
+      duration_minutes: 8
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (independent review incl. running the binary against the full contract; APPROVED, 0 punch-list)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent; orchestrator fills real tokens_total/estimated_usd/duration_minutes from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 208872
+    estimated_usd: 1.38
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-005: lint command with human and json output
@@ -331,16 +348,22 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Having written the CLI/JSON contract into `docs/api-contract.md` at design
+   time paid off big here: the build implemented against a fixed contract and verify
+   checked against the same doc, so the JSON schema and exit codes were unambiguous.
+   Pulling the CLI ahead of the remaining rules was the right call — skillport is now
+   a runnable tool, and the remaining rules (SPEC-006) drop into `lint_skill` without
+   touching the CLI.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No new decision/constraint. Fixed two cosmetic nits the verifier flagged during
+   this ship: the stale `src/lib.rs` module doc-comment ("later specs add … the CLI")
+   and DEC-008's `agent.id` metadata. Neither gated anything.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — SPEC-006 (remaining rules) is already queued in the STAGE-002 backlog. The CLI
+   is stable; the emitter's JSON is `schema: 1` and pinned. When STAGE-003 adds
+   `--sarif`/`--target`, `target` in the JSON envelope is already a nullable slot.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:

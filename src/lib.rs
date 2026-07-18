@@ -1,9 +1,11 @@
 //! skillport — validate and audit agent `SKILL.md` files.
 //!
-//! This crate is the collection-first substrate (DEC-004): a tolerant, lossless
-//! parser turns raw `SKILL.md` bytes into a canonical [`skill::Skill`]. Later
-//! specs add the walker, rule engine, report, and CLI on top; nothing here
-//! judges a skill or emits findings.
+//! Collection-first substrate (DEC-004): [`parse`] turns raw `SKILL.md` bytes
+//! into a canonical [`skill::Skill`]; [`walk`] discovers a [`walk::Collection`];
+//! [`lint_skill`] applies the open-spec rules; [`report::Report::from_collection`]
+//! assembles a sectioned, path-sorted report; [`emit`] renders it (human /
+//! `--json`). The `skillport lint` binary (`main.rs`) wires these together.
+//! (`--sarif`/`--target` and the remaining rules are still to come.)
 
 pub mod emit;
 pub mod parse;

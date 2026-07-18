@@ -10,7 +10,7 @@ insight:
     - agent
 
 agent:
-  id: claude-sonnet-4-6
+  id: claude-sonnet-5
   session_id: null
 
 project:

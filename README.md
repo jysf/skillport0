@@ -29,13 +29,14 @@ skillport is **mid-build** and not yet released.
 | Collection tree-walker (`walk` → path-sorted `Collection`) | ✅ shipped (SPEC-002) |
 | Report model (`Finding`/`Severity`/`Report`, exit codes) | ✅ shipped (SPEC-003) |
 | Rule engine — frontmatter / `name.*` / `description.*` / `compatibility` | ✅ shipped (SPEC-004) |
-| Remaining rules (`metadata.*`, `allowed-tools`, `body.*`, unknown-field) | ⏳ next (SPEC-005) |
-| **`lint` CLI** (arg parsing, `--json`, `--strict`, exit codes) | ⏳ pending |
+| **`lint` CLI** (`skillport lint <path>`, `--json`, `--strict`, exit codes) | ✅ shipped (SPEC-005) |
+| Remaining rules (`metadata.*`, `allowed-tools`, `body.*`, unknown-field) | ⏳ next (SPEC-006) |
+| `--sarif` output, `--target <platform>` | ⏳ STAGE-003 |
 | `audit` command | ⏳ PROJ-002 |
 
-There is **no `skillport lint` binary yet** — `src/main.rs` is a stub until the
-CLI spec lands. To see the shipped substrate validate real skills today, use the
-demo below.
+`skillport lint` **runs today.** The rules it enforces so far are the SPEC-004
+batch (frontmatter presence, `name.*`, `description.*`, `compatibility.length`);
+`metadata.*`, `allowed-tools`, `body.*`, and unknown-field checks arrive in SPEC-006.
 
 ## Build & run
 
@@ -44,28 +45,28 @@ in `app.just` (run `just --list` to see them all):
 
 ```bash
 just build          # cargo build
-just build-release  # release binary -> target/release/skillport (currently a stub)
+just build-release  # release binary -> target/release/skillport
 just test           # full test suite (unit + integration + fixtures)
 just clippy         # cargo clippy --all-targets -- -D warnings
-just fmt-check      # formatting check
 just verify-all     # the pre-ship gate: fmt-check + clippy + test
-just doc            # open the API docs to eyeball the substrate
 ```
 
-Plain cargo works too: `cargo test`, `cargo build --release`, etc.
-
-### See it work today (the example)
-
-Until the real CLI ships, run the example
-([`examples/lint_demo.rs`](examples/lint_demo.rs)) — it drives the shipped library
-(`walk` → `Report::from_collection(.., lint_skill)`) over a path and prints findings:
+### Using `skillport lint`
 
 ```bash
-cargo run --example lint_demo                    # lints ./lint-fixtures (a good and a bad skill)
-cargo run --example lint_demo -- path/to/skills  # lint any file / folder / tree
+cargo build --release          # -> target/release/skillport
+alias skillport=./target/release/skillport   # optional
+
+skillport lint <path>          # a SKILL.md file, a skill folder, or a whole tree
+skillport lint <path> --json   # machine-readable output for CI
+skillport lint <path> --strict # treat warnings as failures (affects exit code)
 ```
 
-Sample output:
+Exit codes: **0** clean · **1** on any error (or any warning under `--strict`) ·
+**2** usage error (path not found). Findings go to **stdout**; usage errors to
+**stderr** — so `--json` on stdout is safe to pipe.
+
+Example (`skillport lint lint-fixtures/bad`, exits 1):
 
 ```
 lint-fixtures/bad/My-Skill/SKILL.md
@@ -75,15 +76,20 @@ lint-fixtures/bad/My-Skill/SKILL.md
   error   name.hyphen-edges [name] — 'name' must not start or end with a hyphen
   warning name.dir-match [name] — 'name' (-My--Skill!) should match the skill directory name (My-Skill)
 
-lint-fixtures/good/data-analysis/SKILL.md
-  ✓ no findings
-
-2 skill(s): 4 error(s), 1 warning(s), 0 info(s)
-would-be CI exit code: 1 (non-strict) / 1 (--strict)
+1 skill(s): 4 error(s), 1 warning(s), 0 info(s)
 ```
 
-The rules shown are the SPEC-004 batch; `metadata.*`, `allowed-tools`, `body.*`,
-and unknown-field checks arrive in SPEC-005.
+And `--json` (stable `schema: 1`):
+
+```json
+{"tool":"skillport","version":"0.1.0","schema":1,"target":null,
+ "summary":{"skills":1,"errors":0,"warnings":0,"infos":0},
+ "sections":[{"path":"lint-fixtures/good/data-analysis/SKILL.md","findings":[]}]}
+```
+
+(The [`examples/lint_demo.rs`](examples/lint_demo.rs) library demo —
+`cargo run --example lint_demo -- <path>` — also still works if you want to drive
+the library directly.)
 
 ## Layout
 
@@ -94,16 +100,20 @@ src/
   walk.rs     a path -> a Collection of skills (skips .git/node_modules/target; never aborts)
   report.rs   Finding / Severity / sectioned N-skill Report + exit codes; Report::from_collection
   rules.rs    the open-spec rule engine (lint_skill = the rule_fn from_collection consumes)
-  lib.rs      library root (the substrate); main.rs is a stub until the CLI ships
+  emit.rs     render a Report: human(&Report) and json(&Report) (the --json schema)
+  main.rs     the `skillport lint` CLI (clap): walk -> rules -> report -> emit -> exit code
+  lib.rs      library root tying the substrate together
 examples/
-  lint_demo.rs  `cargo run --example lint_demo` (stand-in for the CLI)
-lint-fixtures/  good/ + bad/ example skills (tests + demo)
+  lint_demo.rs  `cargo run --example lint_demo` (drives the library directly)
+lint-fixtures/  good/ + bad/ + warn-only/ example skills (tests + demo)
+tests/
+  cli.rs        end-to-end tests that run the built binary
 ```
 
 Design docs: [`docs/architecture.md`](docs/architecture.md),
 [`docs/data-model.md`](docs/data-model.md),
 [`docs/api-contract.md`](docs/api-contract.md). Rationale:
-[`decisions/`](decisions/) (DEC-001…007).
+[`decisions/`](decisions/) (DEC-001…008).
 
 ## How this repo is built
 

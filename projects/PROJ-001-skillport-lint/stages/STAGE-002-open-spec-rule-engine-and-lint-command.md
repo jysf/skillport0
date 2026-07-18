@@ -116,10 +116,9 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 - [x] SPEC-004 (shipped 2026-07-18, PR #4) — Rule engine (`lint_skill` = the
   `rule_fn`) + frontmatter presence (three `frontmatter.*` ids) + `name.*` +
   `description.*` + `compatibility.length`. Locked the empty-`Present` decision.
-- [~] SPEC-005 (design) — **`lint` command** (clap) + human & `--json` emitters +
-  exit codes + `--strict`, implementing `docs/api-contract.md`. Pulled ahead of the
-  remaining rules so `skillport lint <path>` is runnable. Adds clap + serde_json
-  (DEC-008). *(Combines the former "lint command" + "emitters" backlog items.)*
+- [x] SPEC-005 (shipped 2026-07-18, PR #5) — **`lint` command** (clap) + human &
+  `--json` emitters + exit codes + `--strict`, implementing `docs/api-contract.md`.
+  `skillport lint <path>` is runnable. Added clap + serde + serde_json (DEC-008).
 - [ ] (not yet written) — SPEC-006: remaining rules `metadata.*`,
   `allowed-tools.format`, `body.*` (`body.size` line-count only; tokenizer is
   STAGE-003), `frontmatter.unknown` (open field set; `--target` widening is
@@ -131,7 +130,7 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 - [ ] (not yet written) — decide whether a permission-denied subtree → finding
   (signal `walk-unreadable-dirs`), alongside `file.unreadable`.
 
-**Count:** 1 shipped / 1 in design / 4 pending
+**Count:** 2 shipped / 0 active / 4 pending
 
 ## Design Notes
 
