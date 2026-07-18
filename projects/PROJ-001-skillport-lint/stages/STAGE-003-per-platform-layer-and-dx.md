@@ -5,7 +5,7 @@
 
 stage:
   id: STAGE-003                     # stable, zero-padded, continuous across the repo
-  status: proposed                  # proposed | active | shipped | cancelled | on_hold
+  status: active                  # proposed | active | shipped | cancelled | on_hold
   priority: medium                  # critical | high | medium | low
   target_complete: null             # optional: YYYY-MM-DD
 
@@ -103,7 +103,9 @@ doc work, not a rushed add-on.
   docs.claude.com; encode the `--target claude` set with source comments;
   resolve the `allowed-tools.format` downgrade question from the docs.
 - [ ] (not yet written) — Real-tokenizer `body.size` (+ DEC for the crate).
-- [ ] (not yet written) — `--sarif` emitter over the sectioned report.
+- [~] SPEC-008 (design) — `--sarif` emitter (SARIF 2.1.0) over the sectioned report:
+  `emit::sarif` + `--sarif` flag (mutually exclusive with `--json`); level map
+  info→note; no new dep (serde_json). Drops into GitHub code-scanning.
 - [ ] (not yet written) — GitHub Action / CI workflow wrapping the binary.
 - [ ] (not yet written) — README (rule ids/severities/flags) + per-rule tests +
   good/bad fixtures + the zero-findings-on-a-perfect-skill test.
