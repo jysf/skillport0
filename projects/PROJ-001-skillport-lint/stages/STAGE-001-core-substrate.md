@@ -5,7 +5,7 @@
 
 stage:
   id: STAGE-001                     # stable, zero-padded, continuous across the repo
-  status: active                    # proposed | active | shipped | cancelled | on_hold
+  status: shipped                   # proposed | active | shipped | cancelled | on_hold
   priority: high                    # critical | high | medium | low
   target_complete: null             # optional: YYYY-MM-DD
 
@@ -15,7 +15,7 @@ repo:
   id: skillport
 
 created_at: 2026-07-17
-shipped_at: null
+shipped_at: 2026-07-18
 
 # What part of the project's value thesis this stage advances.
 # If you can't articulate value_contribution, the stage may be
@@ -95,14 +95,12 @@ parse.
   Collection` (skips `.git`/`node_modules`/`target`; single file & tree both yield
   a collection; unreadable/non-UTF-8 file → `Unreadable` item, never aborts;
   path-sorted). Reuses SPEC-001's `parse`. `tempfile` dev-dep only.
-- [~] SPEC-003 (design) — Finding + `Severity` + sectioned N-skill `Report` model
-  with stable rule ids, path-sorted sections, `Report::from_collection(collection,
-  rule_fn)` assembly (Unreadable → `file.unreadable` error; `rule_fn` seam for
-  STAGE-002), and `exit_code(strict)`. **Closes STAGE-001.** (`FrontmatterStatus` →
-  findings and the perm-denied-subtree question are deferred to the rules that
-  consume `rule_fn`, per the spec's Out-of-scope + signal `walk-unreadable-dirs`.)
+- [x] SPEC-003 (shipped 2026-07-18, PR #3) — Finding + `Severity` + sectioned
+  N-skill `Report` model: stable rule ids, path-sorted sections,
+  `Report::from_collection(collection, rule_fn)` (Unreadable → `file.unreadable`
+  error; `rule_fn` seam for STAGE-002), `exit_code(strict)`. No rules/heuristics/emitters.
 
-**Count:** 2 shipped / 1 in design / 0 pending
+**Count:** 3 shipped / 0 active / 0 pending — **stage backlog complete.**
 
 ## Design Notes
 
@@ -129,11 +127,31 @@ parse.
 
 ## Stage-Level Reflection
 
-*Filled in when status moves to shipped.*
+*Shipped 2026-07-18.*
 
-- **Did we deliver the outcome in "What This Stage Is"?** <not yet>
-- **How many specs did it actually take?** <not yet>
-- **What changed between starting and shipping?** <not yet>
-- **Lessons that should update AGENTS.md, templates, or constraints?** <not yet>
-- **Signals dispositioned at this close?** <not yet>
-- **Should any spec-level reflections be promoted to stage-level lessons?** <not yet>
+- **Did we deliver the outcome in "What This Stage Is"?** Yes. The collection-first
+  substrate is complete and reusable: tolerant lossless `parse` (SPEC-001), a
+  path-sorted `Collection` walker that never aborts (SPEC-002), and the sectioned
+  N-skill `Report` + stable-id findings + `exit_code` with the `rule_fn` seam
+  (SPEC-003). PROJ-002's audit and STAGE-002's rule engine both plug into this
+  without a refactor — the DEC-004 bet held.
+- **How many specs did it actually take?** 3 (as planned — the "Skill model" item
+  was folded into SPEC-001). 65 tests total; every spec APPROVED first pass.
+- **What changed between starting and shipping?** Cost metering: SPEC-001's
+  build/verify ran as hand-driven sessions (unmetered → grandfathered); from
+  SPEC-002 on, build (Sonnet) and verify (Opus) run as **metered subagents**, so
+  real cost is captured and cost-audit passes without grandfathering.
+- **Lessons that should update AGENTS.md, templates, or constraints?** None promoted
+  to codified yet (all below the N=3 bar). The metered-subagent pipeline is worth
+  making the default workflow note — captured in memory; revisit at PROJ-001 close.
+- **Signals dispositioned at this close?** All STAGE-001-owned `watch` lessons walked
+  (no silent carry):
+  - `spec-pin-edge-cases` (N=1) — **kept watch** (below N=3 bar); concrete carry into
+    STAGE-002: lock empty-block→`Present`-empty with a test where `frontmatter.missing`
+    is designed. `last_touched` bumped.
+  - `walk-unreadable-dirs` (N=1) — **kept watch**; carry into STAGE-002's report/rules:
+    decide whether a permission-denied subtree becomes a finding. `last_touched` bumped.
+  - (`cost-metering-manual-sessions` is a process-debt, dispositioned at PROJECT close, not here.)
+- **Should any spec-level reflections be promoted to stage-level lessons?** No — the
+  `rule_fn` seam and metered-subagent pipeline are recorded; nothing else recurred
+  enough to promote.

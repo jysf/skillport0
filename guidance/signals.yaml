@@ -127,7 +127,7 @@ signals:
     first_flagged: 2026-07-18
     last_touched: 2026-07-18
     raised_by: claude
-    notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing."
+    notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing. [STAGE-001 close 2026-07-18: walked, kept watch]"
 
   # --- lesson: raised at SPEC-002 verify (2026-07-18) -------------------------
   - id: walk-unreadable-dirs
@@ -140,4 +140,4 @@ signals:
     first_flagged: 2026-07-18
     last_touched: 2026-07-18
     raised_by: claude
-    notes: "Out of scope for the walker spec (only non-UTF-8 files were mandated to become Unreadable). Concrete carry: the STAGE-001 report-model spec should decide whether an unreadable subtree becomes a finding (e.g. dir.unreadable) alongside file.unreadable."
+    notes: "Out of scope for the walker spec (only non-UTF-8 files were mandated to become Unreadable). Concrete carry: the STAGE-001 report-model spec should decide whether an unreadable subtree becomes a finding (e.g. dir.unreadable) alongside file.unreadable. [STAGE-001 close 2026-07-18: walked, kept watch]"

@@ -7,7 +7,7 @@
 task:
   id: SPEC-003
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -60,15 +60,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-4-8
       interface: claude-code
+      tokens_total: 89600
+      estimated_usd: 0.59
+      duration_minutes: 11
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (blended order-of-magnitude, no cache/I-O split). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 71914
+      estimated_usd: 0.47
+      duration_minutes: 2
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (independent review, APPROVED, 0 punch-list). tokens_total = subagent_tokens. estimated_usd = tokens x 6.60 (order-of-magnitude)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent; orchestrator fills real tokens_total/duration/estimated_usd at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 161514
+    estimated_usd: 1.06
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-003: finding severity and sectioned report model
@@ -322,22 +339,23 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — The `rule_fn` seam is the key design bet — taking the rule engine as a
+   parameter kept `report.rs` fully testable in STAGE-001 and makes STAGE-002
+   purely additive. Worth doing again. Minor: my `exit_code` sketch in the spec was
+   an if-chain that trips clippy `if_same_then_else`; the build correctly rewrote it
+   to `i32::from(...)`. Next time, sketch spec pseudo-code that's already lint-clean.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. DEC-003/004/005 covered the design exactly; no new decision or signal.
+   The metered-subagent pipeline continues to capture real cost cleanly.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — STAGE-002's first spec (rule engine) now has a concrete target: implement
+   `rule_fn: Fn(&Skill) -> Vec<Finding>` producing the open-spec catalog, and wire
+   `Report::from_collection` + emitters + the `lint` CLI. The `frontmatter.missing`
+   rule must consciously handle the empty-but-`Present` frontmatter case (signal
+   `spec-pin-edge-cases`). Already reflected in the STAGE-002 backlog.
 
-4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
-   the defect-escape distribution is greppable across specs:
-   `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
-   `none` (clean first try).
-   — <one word>
-   *(Runtime/operational defects — the escape-prone class — only exist once the
-   artifact meets its real host. `escaped` here is a signal to strengthen the
-   §12 behavioral pre-flight for that surface.)*
+4. **Where was the worst defect caught?** — `none` (clean Sonnet build; independent
+   Opus verify APPROVED first pass, zero punch-list).
+   `design` | `build` | `verify` | `ship` | `escaped` | `none`
