@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-4-8  # build ran as a Sonnet subagent (cost)
   created_at: 2026-07-18
 
 references:
@@ -57,6 +57,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-4-8
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent; orchestrator fills real tokens_total/duration/estimated_usd at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -139,28 +147,28 @@ and `Report::exit_code(strict)` implementing the CI contract.
 
 ## Acceptance Criteria
 
-- [ ] **Types exist** as above; `Finding.rule` is a `&'static str` stable id (the
+- [x] **Types exist** as above; `Finding.rule` is a `&'static str` stable id (the
       public contract, DEC-005). `Severity` has a total order Error > Warning > Info.
-- [ ] **One section per collection item, path-sorted:** `from_collection` produces
+- [x] **One section per collection item, path-sorted:** `from_collection` produces
       exactly one `Section` per item in the collection, `sections` sorted by `path`
       ascending, deterministically (DEC-004/005) — independent of input order.
-- [ ] **Unreadable → `file.unreadable` error:** a `CollectionItem::Unreadable`
+- [x] **Unreadable → `file.unreadable` error:** a `CollectionItem::Unreadable`
       becomes a section containing exactly one `Finding` with `rule ==
       "file.unreadable"`, `severity == Error`, and the item's path. (Structural,
       owned here — DEC-003 error is fine: it is a crisp mechanical fact, not a heuristic.)
-- [ ] **Skill items run `rule_fn`:** for a `CollectionItem::Skill`, the section's
+- [x] **Skill items run `rule_fn`:** for a `CollectionItem::Skill`, the section's
       findings are exactly what `rule_fn(&skill)` returned (in a deterministic order).
-- [ ] **No-op rule_fn:** with `rule_fn = |_| vec![]` and an all-readable collection,
+- [x] **No-op rule_fn:** with `rule_fn = |_| vec![]` and an all-readable collection,
       every section has empty findings and `summary` counts are all zero — a
       spec-perfect collection yields no findings through this layer (DEC-003).
-- [ ] **Deterministic within-section order:** findings inside a section are sorted
+- [x] **Deterministic within-section order:** findings inside a section are sorted
       by a stable key (severity descending, then `rule` id, then `field`/message) so
       identical input yields byte-identical output (DEC-005). Do not rely on push order.
-- [ ] **Summary counts:** `summary.skills` = number of `Skill` items (not
+- [x] **Summary counts:** `summary.skills` = number of `Skill` items (not
       Unreadable), and `errors`/`warnings`/`infos` = totals across all findings.
-- [ ] **exit_code:** any Error → 1; `strict` && any Warning → 1; Warning without
+- [x] **exit_code:** any Error → 1; `strict` && any Warning → 1; Warning without
       strict → 0; Info only → 0; no findings → 0. (Table-tested.)
-- [ ] **No heuristic, no rules here:** `report.rs` implements **no** open-spec rule
+- [x] **No heuristic, no rules here:** `report.rs` implements **no** open-spec rule
       (no `name.*`, `frontmatter.missing`, etc.) and no heuristic; those arrive via
       `rule_fn` (STAGE-002). The only finding this module emits is `file.unreadable`.
 
@@ -271,28 +279,40 @@ touching this file. Do **not** import or assume any rule here.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-003-report`
+- **PR (if applicable):** none yet (build cycle only)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - `exit_code` implemented as `i32::from(errors > 0 || (strict && warnings > 0))`
+    rather than a chained `if`/`else if`/`else` — `clippy`'s
+    `if_same_then_else` flags the spec's natural if-chain because both the
+    `Error` and `strict && Warning` branches return the literal `1`. Same
+    truth table, same test coverage (the exit-code table test is unchanged);
+    purely a clippy-clean restructuring.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none beyond STAGE-002 (rule engine via `rule_fn`, CLI wiring, emitters),
+    already called out as out-of-scope in this spec.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing; the Outputs shape, Failing Tests list, and Notes (sort key,
+   message format) were specific enough to implement directly without
+   guessing.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No new constraint needed. The one friction was cosmetic: the suggested
+   `if`/`else if`/`else` for `exit_code` trips clippy's `if_same_then_else`
+   lint (both true-branches return `1`); worth a one-line note in future specs
+   that "1 if A or B" reads better as a boolean than an if-chain.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing structural; would write `exit_code` as the boolean expression
+   from the start instead of the literal if-chain shown in the spec's Notes.
 
 ---
 

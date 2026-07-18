@@ -6,9 +6,11 @@
 //! judges a skill or emits findings.
 
 pub mod parse;
+pub mod report;
 pub mod skill;
 pub mod walk;
 
 pub use parse::parse;
+pub use report::{Finding, Report, Section, Severity, Summary};
 pub use skill::{Frontmatter, FrontmatterStatus, Skill, YamlValue};
 pub use walk::{walk, Collection, CollectionItem};
