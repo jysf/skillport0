@@ -131,3 +131,51 @@ fn strict_flips_warning_only_fixture_to_exit_1() {
 fn string(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
+
+#[cfg(unix)]
+#[test]
+fn unreadable_subdir_surfaces_dir_unreadable_warning() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tree = tempfile::tempdir().expect("create temp dir");
+    let good = tree.path().join("good");
+    std::fs::create_dir_all(&good).expect("create good dir");
+    std::fs::write(
+        good.join("SKILL.md"),
+        "---\nname: foo\ndescription: d\n---\nbody\n",
+    )
+    .expect("write skill");
+
+    let locked = tree.path().join("locked");
+    std::fs::create_dir_all(&locked).expect("create locked dir");
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000))
+        .expect("chmod 000 locked dir");
+
+    // Guard restores permissions on drop (including panic) so tempdir cleanup works.
+    struct RestorePerms(std::path::PathBuf);
+    impl Drop for RestorePerms {
+        fn drop(&mut self) {
+            let _ = std::fs::set_permissions(&self.0, std::fs::Permissions::from_mode(0o755));
+        }
+    }
+    let _restore = RestorePerms(locked.clone());
+
+    let without_strict = run(&[tree.path().to_str().unwrap()]);
+    let stdout = string(&without_strict.stdout);
+    assert!(
+        stdout.contains("dir.unreadable"),
+        "expected stdout to mention dir.unreadable, got: {stdout}"
+    );
+    assert_eq!(
+        without_strict.status.code(),
+        Some(0),
+        "a lone dir.unreadable warning should not fail non-strict lint; stdout: {stdout}"
+    );
+
+    let with_strict = run(&[tree.path().to_str().unwrap(), "--strict"]);
+    assert_eq!(
+        with_strict.status.code(),
+        Some(1),
+        "dir.unreadable warning should fail under --strict"
+    );
+}

@@ -14,8 +14,12 @@ use crate::walk::{Collection, CollectionItem};
 use std::cmp::Reverse;
 use std::path::PathBuf;
 
-/// The stable id for the one structural finding this module emits.
+/// The stable id for the one structural finding this module emits for an
+/// unreadable file.
 const FILE_UNREADABLE: &str = "file.unreadable";
+/// The stable id for the structural finding emitted for a directory the walk
+/// could not descend into (coverage gap, not a skill violation).
+const DIR_UNREADABLE: &str = "dir.unreadable";
 
 /// A finding's severity. Total order: `Error > Warning > Info` (DEC-003).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -119,6 +123,24 @@ impl Report {
                         findings,
                     }
                 }
+                CollectionItem::UnreadableDir { path, error } => {
+                    let finding = Finding {
+                        rule: DIR_UNREADABLE,
+                        severity: Severity::Warning,
+                        message: format!(
+                            "could not read directory (skills inside were not checked): {error}"
+                        ),
+                        path: path.clone(),
+                        field: None,
+                        line: None,
+                    };
+                    let findings = vec![finding];
+                    tally(&mut summary, &findings);
+                    Section {
+                        path: path.clone(),
+                        findings,
+                    }
+                }
             })
             .collect();
 
@@ -181,6 +203,13 @@ mod tests {
 
     fn unreadable_at(path: &str, error: &str) -> CollectionItem {
         CollectionItem::Unreadable {
+            path: PathBuf::from(path),
+            error: error.to_string(),
+        }
+    }
+
+    fn unreadable_dir_at(path: &str, error: &str) -> CollectionItem {
+        CollectionItem::UnreadableDir {
             path: PathBuf::from(path),
             error: error.to_string(),
         }
@@ -373,5 +402,52 @@ mod tests {
         let coll = collection(vec![unreadable_at("x/SKILL.md", "err")]);
         let report = Report::from_collection(&coll, |_| Vec::new());
         assert_eq!(report.sections[0].findings[0].rule, "file.unreadable");
+    }
+
+    #[test]
+    fn unreadable_dir_becomes_one_dir_unreadable_warning_skills_unchanged() {
+        let coll = collection(vec![
+            unreadable_dir_at("locked", "permission denied"),
+            CollectionItem::Skill(skill_at("a/SKILL.md")),
+        ]);
+
+        let report = Report::from_collection(&coll, |_| Vec::new());
+
+        assert_eq!(report.sections.len(), 2);
+        let section = report
+            .sections
+            .iter()
+            .find(|s| s.path == Path::new("locked"))
+            .expect("locked section present");
+        assert_eq!(section.findings.len(), 1);
+        let f = &section.findings[0];
+        assert_eq!(f.rule, "dir.unreadable");
+        assert_eq!(f.severity, Severity::Warning);
+        assert_eq!(f.path, Path::new("locked"));
+
+        assert_eq!(report.summary.warnings, 1);
+        assert_eq!(report.summary.errors, 0);
+        // Only the real skill counts toward summary.skills.
+        assert_eq!(report.summary.skills, 1);
+    }
+
+    #[test]
+    fn dir_unreadable_is_the_exact_stable_id() {
+        assert_eq!(DIR_UNREADABLE, "dir.unreadable");
+
+        let coll = collection(vec![unreadable_dir_at("locked", "err")]);
+        let report = Report::from_collection(&coll, |_| Vec::new());
+        assert_eq!(report.sections[0].findings[0].rule, "dir.unreadable");
+    }
+
+    #[test]
+    fn exit_code_dir_unreadable_warning_non_strict_0_strict_1() {
+        let coll = collection(vec![unreadable_dir_at("locked", "err")]);
+        let report = Report::from_collection(&coll, |_| Vec::new());
+
+        assert_eq!(report.summary.warnings, 1);
+        assert_eq!(report.summary.errors, 0);
+        assert_eq!(report.exit_code(false), 0);
+        assert_eq!(report.exit_code(true), 1);
     }
 }

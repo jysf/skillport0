@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -57,6 +57,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent; orchestrator fills real numbers from Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -139,23 +147,23 @@ subtree), and have `Report::from_collection` turn it into a `dir.unreadable`
 
 ## Acceptance Criteria
 
-- [ ] `CollectionItem::UnreadableDir { path, error }` exists; `CollectionItem::path()`
+- [x] `CollectionItem::UnreadableDir { path, error }` exists; `CollectionItem::path()`
       returns its `path`; the variant participates in the path sort.
-- [ ] A directory whose `read_dir` fails (permission denied) is recorded as
+- [x] A directory whose `read_dir` fails (permission denied) is recorded as
       `UnreadableDir`, **not** silently skipped; sibling skills in the same walk are
       still discovered (walk never aborts — DEC-005).
-- [ ] `Report::from_collection` maps `UnreadableDir` → exactly one finding with
+- [x] `Report::from_collection` maps `UnreadableDir` → exactly one finding with
       `rule == "dir.unreadable"`, `severity == Warning`, the dir's path; a message
       that makes clear the subtree wasn't checked; `summary.skills` unchanged by it.
-- [ ] `dir.unreadable` counts toward `summary.warnings`; it flips the exit code to
+- [x] `dir.unreadable` counts toward `summary.warnings`; it flips the exit code to
       1 only under `--strict` (via the existing `Report::exit_code`).
-- [ ] Deterministic: `UnreadableDir` sections are path-sorted with the rest; same
+- [x] Deterministic: `UnreadableDir` sections are path-sorted with the rest; same
       tree → byte-identical output.
-- [ ] End-to-end: `skillport lint <tree-with-an-unreadable-subdir>` shows the
+- [x] End-to-end: `skillport lint <tree-with-an-unreadable-subdir>` shows the
       `dir.unreadable` warning in human and `--json` output (no emitter change).
-- [ ] No new dependency; `main.rs`/`emit.rs` unchanged (except an optional test).
-- [ ] The good fixture still yields zero findings; existing tests still pass.
-- [ ] `key.duplicate` is **not** added (documented here as resolved-redundant); the
+- [x] No new dependency; `main.rs`/`emit.rs` unchanged (except an optional test).
+- [x] The good fixture still yields zero findings; existing tests still pass.
+- [x] `key.duplicate` is **not** added (documented here as resolved-redundant); the
       STAGE-002 backlog item is closed.
 
 ## Failing Tests
@@ -237,28 +245,34 @@ temp dir can be cleaned up.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-007-unreadable-dir`
+- **PR (if applicable):** not opened (build cycle only, per orchestrator instructions)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - None in behavior/design. Implementation detail: `collect`'s out-param is
+    `&mut Vec<(PathBuf, String)>` (dir errors only), converted to
+    `CollectionItem::UnreadableDir` in `walk` right before the final sort —
+    matches the spec's suggested approach exactly (Notes section).
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none — this closes the STAGE-002 backlog (both `walk-unreadable-dirs` and
+    the resolved-redundant `key.duplicate` item).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing; the spec's Notes section named the exact swallow site and a
+   concrete threading strategy, so the change was mechanical.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No new constraint needed; DEC-003/004/005 fully covered the severity,
+   substrate, and determinism questions this spec raised.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing meaningful; would follow the same out-param threading approach.
 
 ---
 

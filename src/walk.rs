@@ -41,6 +41,11 @@ pub enum CollectionItem {
     /// The file was found but could not be read as UTF-8 text (I/O error,
     /// invalid UTF-8, ...). Captured, never fatal.
     Unreadable { path: PathBuf, error: String },
+    /// A directory the walk tried to descend into but couldn't (e.g.
+    /// permission denied) — the subtree under `path` was not checked.
+    /// Never emitted for intentionally-ignored dirs (`.git`/`node_modules`/
+    /// `target`); those stay silently skipped.
+    UnreadableDir { path: PathBuf, error: String },
 }
 
 impl CollectionItem {
@@ -49,6 +54,7 @@ impl CollectionItem {
         match self {
             CollectionItem::Skill(skill) => &skill.path,
             CollectionItem::Unreadable { path, .. } => path,
+            CollectionItem::UnreadableDir { path, .. } => path,
         }
     }
 }
@@ -68,6 +74,7 @@ impl CollectionItem {
 /// Total: never returns `Err`, never panics.
 pub fn walk(root: &Path) -> Collection {
     let mut items = Vec::new();
+    let mut dir_errors: Vec<(PathBuf, String)> = Vec::new();
 
     // `symlink_metadata` never follows the final symlink component, so we can
     // tell a symlink from a real file/dir up front.
@@ -76,7 +83,7 @@ pub fn walk(root: &Path) -> Collection {
             items.push(read_item(root.to_path_buf()));
         } else if meta.is_dir() {
             let mut paths = Vec::new();
-            collect(root, &mut paths);
+            collect(root, &mut paths, &mut dir_errors);
             paths.sort();
             items.extend(paths.into_iter().map(read_item));
         }
@@ -89,13 +96,19 @@ pub fn walk(root: &Path) -> Collection {
                     items.push(read_item(root.to_path_buf()));
                 } else if resolved.is_dir() {
                     let mut paths = Vec::new();
-                    collect(root, &mut paths);
+                    collect(root, &mut paths, &mut dir_errors);
                     paths.sort();
                     items.extend(paths.into_iter().map(read_item));
                 }
             }
         }
     }
+
+    items.extend(
+        dir_errors
+            .into_iter()
+            .map(|(path, error)| CollectionItem::UnreadableDir { path, error }),
+    );
 
     items.sort_by(|a, b| a.path().cmp(b.path()));
 
@@ -106,10 +119,17 @@ pub fn walk(root: &Path) -> Collection {
 }
 
 /// Recursively collect every `SKILL.md` path under `dir` into `out`,
-/// skipping ignored directory names and not following directory symlinks.
-fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
+/// skipping ignored directory names and not following directory symlinks. A
+/// directory the walk actually tries to descend into but can't read is
+/// recorded in `dir_errors` (not emitted for intentionally-ignored dirs,
+/// which are never descended into in the first place).
+fn collect(dir: &Path, out: &mut Vec<PathBuf>, dir_errors: &mut Vec<(PathBuf, String)>) {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            dir_errors.push((dir.to_path_buf(), format!("read error: {e}")));
+            return;
+        }
     };
 
     for entry in entries.flatten() {
@@ -132,7 +152,7 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
             if matches!(name, Some(n) if IGNORED_DIRS.contains(&n)) {
                 continue;
             }
-            collect(&path, out);
+            collect(&path, out, dir_errors);
         } else if meta.is_file()
             && path.file_name().and_then(|n| n.to_str()) == Some(SKILL_FILENAME)
         {
@@ -418,11 +438,88 @@ mod tests {
                 .to_string_lossy()
                 .replace('\\', "/")
                 .ends_with("data-analysis/SKILL.md"),
-            CollectionItem::Unreadable { .. } => false,
+            CollectionItem::Unreadable { .. } | CollectionItem::UnreadableDir { .. } => false,
         });
         assert!(
             found,
             "expected data-analysis/SKILL.md among {collection:?}"
         );
+    }
+
+    /// Guard that `chmod`s a directory back to a readable mode on drop, so a
+    /// locked-down temp dir can still be cleaned up even if an assertion
+    /// panics mid-test.
+    #[cfg(unix)]
+    struct RestorePerms(PathBuf);
+
+    #[cfg(unix)]
+    impl Drop for RestorePerms {
+        fn drop(&mut self) {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&self.0, std::fs::Permissions::from_mode(0o755));
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unreadable_subdir_becomes_unreadable_dir_siblings_still_found() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tree = TempTree::new();
+        tree.write("good/SKILL.md", MINIMAL_SKILL);
+        let locked = tree.path().join("locked");
+        fs::create_dir_all(&locked).expect("create locked dir");
+        tree.write("locked/SKILL.md", MINIMAL_SKILL);
+
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+            .expect("chmod 000 locked dir");
+        let _restore = RestorePerms(locked.clone());
+
+        let collection = walk(tree.path());
+
+        let has_good_skill = collection.items.iter().any(|i| match i {
+            CollectionItem::Skill(skill) => skill.dir_name.as_deref() == Some("good"),
+            _ => false,
+        });
+        assert!(
+            has_good_skill,
+            "expected the good skill among {collection:?}"
+        );
+
+        let has_unreadable_dir = collection
+            .items
+            .iter()
+            .any(|i| matches!(i, CollectionItem::UnreadableDir { path, .. } if path == &locked));
+        assert!(
+            has_unreadable_dir,
+            "expected an UnreadableDir for locked/ among {collection:?}"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn items_including_unreadable_dir_are_path_sorted() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let tree = TempTree::new();
+        tree.write("zzz/SKILL.md", MINIMAL_SKILL);
+        tree.write("aaa/SKILL.md", MINIMAL_SKILL);
+        let locked = tree.path().join("mmm_locked");
+        fs::create_dir_all(&locked).expect("create locked dir");
+
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+            .expect("chmod 000 locked dir");
+        let _restore = RestorePerms(locked.clone());
+
+        let collection = walk(tree.path());
+
+        let paths: Vec<&Path> = collection.items.iter().map(|i| i.path()).collect();
+        let mut sorted = paths.clone();
+        sorted.sort();
+        assert_eq!(paths, sorted);
+        assert!(collection
+            .items
+            .iter()
+            .any(|i| matches!(i, CollectionItem::UnreadableDir { .. })));
     }
 }
