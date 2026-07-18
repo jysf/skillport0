@@ -35,7 +35,7 @@ just report daily                  # generate today's daily report
 just report weekly                 # generate this week's weekly report
 just cost-audit                    # gate: every shipped spec has real build/verify cost
 ```
-(App/build commands — `just build`, `just test`, `just demo`, … — live in
+(App/build commands — `just build`, `just test`, `just clippy`, … — live in
 `app.just`; run `just --list` to see both sets together.)
 
 ## Reports
@@ -74,4 +74,4 @@ See `AGENTS.md` §15 for the full discipline.
 | `decisions/` | Decision log (DEC-*, accumulates across projects) |
 | `projects/` | Each project (wave of work); `brief.md`, `stages/`, `specs/` |
 | `src/` | The Rust library + (eventually) the CLI |
-| `lint-fixtures/` | good/ + bad/ example skills used by tests and `just demo` |
+| `lint-fixtures/` | good/ + bad/ example skills used by tests and the demo example |

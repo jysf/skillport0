@@ -39,30 +39,30 @@ demo below.
 
 ## Build & run
 
-Requires a current stable Rust toolchain (edition 2021). Commands live in
-`app.just` (run `just --list` to see them all):
+Requires a current stable Rust toolchain (edition 2021). Build/dev commands live
+in `app.just` (run `just --list` to see them all):
 
 ```bash
 just build          # cargo build
+just build-release  # release binary -> target/release/skillport (currently a stub)
 just test           # full test suite (unit + integration + fixtures)
 just clippy         # cargo clippy --all-targets -- -D warnings
 just fmt-check      # formatting check
+just verify-all     # the pre-ship gate: fmt-check + clippy + test
 just doc            # open the API docs to eyeball the substrate
-just build-release  # release binary -> target/release/skillport (currently a stub)
 ```
 
 Plain cargo works too: `cargo test`, `cargo build --release`, etc.
 
-### See it work today (`just demo`)
+### See it work today (the example)
 
-Until the real CLI ships, `just demo` runs a small example
-([`examples/lint_demo.rs`](examples/lint_demo.rs)) that drives the shipped library
-(`walk` → `Report::from_collection(.., lint_skill)`) over a path and prints
-findings:
+Until the real CLI ships, run the example
+([`examples/lint_demo.rs`](examples/lint_demo.rs)) — it drives the shipped library
+(`walk` → `Report::from_collection(.., lint_skill)`) over a path and prints findings:
 
 ```bash
-just demo                     # lints ./lint-fixtures (a good and a bad skill)
-just demo path/to/skills      # lint any file / folder / tree
+cargo run --example lint_demo                    # lints ./lint-fixtures (a good and a bad skill)
+cargo run --example lint_demo -- path/to/skills  # lint any file / folder / tree
 ```
 
 Sample output:
@@ -96,7 +96,7 @@ src/
   rules.rs    the open-spec rule engine (lint_skill = the rule_fn from_collection consumes)
   lib.rs      library root (the substrate); main.rs is a stub until the CLI ships
 examples/
-  lint_demo.rs  the `just demo` example (stand-in for the CLI)
+  lint_demo.rs  `cargo run --example lint_demo` (stand-in for the CLI)
 lint-fixtures/  good/ + bad/ example skills (tests + demo)
 ```
 

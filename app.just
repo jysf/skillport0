@@ -1,4 +1,4 @@
-# app.just — skillport's project commands (build, test, run, lint).
+# app.just — skillport's build & dev commands.
 #
 # PROJECT-OWNED. The template-managed root `justfile` imports this
 # (`import? 'app.just'`), so these run as `just build`, `just test`, … alongside
@@ -7,34 +7,48 @@
 #
 # NOTE: skillport is mid-build. The library substrate (parse/walk/rules/report)
 # works and is tested; the real `lint` CLI is a pending STAGE-002 spec, so
-# `main.rs` is still a stub. Until then, use `just demo` to see the library
-# validate real skills end-to-end.
+# `main.rs` is still a stub. To see the library run today, use the example:
+#   cargo run --example lint_demo -- <path>      (default path: lint-fixtures)
+
+# --- build --------------------------------------------------------------------
 
 # Dev build
 build:
     cargo build
 
-# Release binary -> target/release/skillport
+# Optimized release binary -> target/release/skillport
 build-release:
     cargo build --release
 
-# Run the binary (currently a stub until the lint CLI spec lands)
+# Fast type/borrow check, no codegen (all targets incl. tests/examples)
+check:
+    cargo check --all-targets
+
+# Run the binary with args (currently a stub until the lint CLI spec lands)
 run *ARGS:
     cargo run -- {{ARGS}}
 
-# Run the whole test suite (unit + integration + fixtures)
+# Install the binary into ~/.cargo/bin
+install:
+    cargo install --path .
+
+# --- test ---------------------------------------------------------------------
+
+# Full test suite (unit + integration + fixtures)
 test:
     cargo test
 
-# Run a single test by name substring, e.g. `just test-one name.charset`
+# Run tests matching a name substring, e.g. `just test-one name.charset`
 test-one NAME:
     cargo test {{NAME}}
+
+# --- lint / format ------------------------------------------------------------
 
 # Clippy with warnings denied (matches CI)
 clippy:
     cargo clippy --all-targets -- -D warnings
 
-# Format the code
+# Format the code in place
 fmt:
     cargo fmt
 
@@ -42,19 +56,23 @@ fmt:
 fmt-check:
     cargo fmt --check
 
-# Fast type/borrow check, no codegen
-check:
-    cargo check --all-targets
+# The full pre-ship gate: format check + clippy + tests
+verify-all: fmt-check clippy test
+
+# --- docs / deps / housekeeping ----------------------------------------------
 
 # Build + open the API docs for eyeballing the substrate
 doc:
     cargo doc --no-deps --open
 
-# The gates a spec must pass before ship (fmt + clippy + test)
-verify-all: fmt-check clippy test
+# Show the dependency tree
+tree:
+    cargo tree
 
-# DEMO: exercise the shipped library against a path (default: the good/bad
-# fixtures) and print findings — a stand-in until the real `lint` CLI ships.
-# Usage: `just demo`  or  `just demo path/to/skills`
-demo PATH="lint-fixtures":
-    cargo run --quiet --example lint_demo -- {{PATH}}
+# Update dependencies within semver ranges (writes Cargo.lock)
+update:
+    cargo update
+
+# Remove build artifacts (target/)
+clean:
+    cargo clean
