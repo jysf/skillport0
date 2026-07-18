@@ -19,6 +19,9 @@ out/
 .next/
 .turbo/
 
+# Rust build artifacts (Cargo.lock IS committed — see toolchain-brief.md)
+/target/
+
 # IDE
 .vscode/
 .idea/

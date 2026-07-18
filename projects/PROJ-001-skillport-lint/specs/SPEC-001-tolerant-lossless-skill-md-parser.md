@@ -7,7 +7,7 @@
 task:
   id: SPEC-001
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: verify  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8
-  implementer: claude-sonnet-4-6  # tier_map.build; the build agent updates it with the real model
+  implementer: claude-opus-4-8    # tier_map.build; updated by the build agent to the real model
   created_at: 2026-07-17
 
 references:
@@ -47,6 +47,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-17
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-17
+      notes: "parser substrate build; orchestrator fills real tokens_total/duration/usd at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -253,21 +261,55 @@ Use table-style cases where natural.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-001-parser`
+- **PR (if applicable):** opened against `main`, referencing PROJ-001 / STAGE-001 / SPEC-001.
+- **All acceptance criteria met?** yes — every AC and all 12 unit cases + the
+  fixture-backed case pass; `cargo test` (14 tests) green, `cargo clippy -- -D
+  warnings` clean, `cargo fmt --check` clean.
 - **New decisions emitted:**
-  - `DEC-007` — YAML + ordered-map dependency choice (expected)
+  - `DEC-007` — YAML crate (`serde_yaml_ng`) + ordered-map (`indexmap`) choice,
+    with the license check and why not `serde_yaml`.
 - **Deviations from spec:**
-  - [list]
+  - Frontmatter modeled as `indexmap::IndexMap<String, serde_yaml_ng::Value>`
+    (the spec left the concrete type to the build; this satisfies the fixed
+    shape). `Skill` derives `Debug, Clone` but not `PartialEq` (tests compare
+    fields individually; `serde_yaml_ng::Value` does impl `PartialEq` if a
+    whole-`Skill` compare is wanted later).
+  - **Body-after-close:** the single newline immediately after the closing fence
+    is consumed, so `body` never starts with a stray blank line (per the spec's
+    "assert whichever you choose" note — asserted in
+    `wellformed_splits_frontmatter_and_body` and `invalid_yaml_still_separates_body`).
+  - **Empty/whitespace-only fenced block** (`---`\n`---`) is treated as `Present`
+    with an empty frontmatter map (tolerant), not `Invalid` — an explicit choice
+    not covered by a failing test.
+  - **`Unclosed`** yields an empty `body` (the spec fixes frontmatter empty +
+    no-panic but leaves body unspecified for this case).
+  - Good fixture folded in at repo-root `lint-fixtures/good/data-analysis/SKILL.md`
+    (copied from the prototype's `lint-fixtures/good`, which lived only inside
+    `initial_stuff/skillport.tar.gz`); the fixture-backed test discovers it via a
+    small local recursive walk (the real walker is a later spec).
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - Wire `cargo-deny` + a license policy into CI (`license-policy`; deferred by
+    the spec to a later spec — deps are already in-policy, verified in DEC-007).
+  - The tree-walker / collection spec (STAGE-001) will consume `parse` per file;
+    it can reuse the test's `collect_skill_files` idea.
+  - A `key.duplicate` rule (STAGE-002) — the parser currently lets a duplicate
+    frontmatter key take last-write-wins rather than flagging it.
 
 ### Build-phase reflection (3 questions, short answers)
 
-1. **What was unclear in the spec that slowed you down?** — <answer>
-2. **Was there a constraint or decision that should have been listed but wasn't?** — <answer>
-3. **If you did this task again, what would you do differently?** — <answer>
+1. **What was unclear in the spec that slowed you down?** — Only the body shape
+   of the non-`Present` statuses (`Unclosed` body, empty-block status) was left
+   open; the spec anticipated this ("assert whichever you choose"), so it cost a
+   decision, not time. The `lint-fixtures/` referenced by path existed only
+   inside a tarball, which took a step to materialize.
+2. **Was there a constraint or decision that should have been listed but
+   wasn't?** — No. DEC-002/004/005 + the two dep constraints covered the design
+   space exactly; DEC-007 was the only new decision needed.
+3. **If you did this task again, what would you do differently?** — Extract the
+   prototype fixtures first (before reading `parse.rs`), so the fixture-backed
+   test target is on disk from the start. Otherwise the offset-based line split
+   (verbatim body, CRLF-safe) held up cleanly.
 
 ---
 
