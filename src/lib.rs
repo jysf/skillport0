@@ -7,6 +7,8 @@
 
 pub mod parse;
 pub mod skill;
+pub mod walk;
 
 pub use parse::parse;
 pub use skill::{Frontmatter, FrontmatterStatus, Skill, YamlValue};
+pub use walk::{walk, Collection, CollectionItem};

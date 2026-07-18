@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5  # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -54,6 +54,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "implementer subagent; orchestrator fills real tokens_total at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -255,28 +263,49 @@ resulting `Collection`.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-002-walker`
+- **PR (if applicable):** not opened by build (orchestrator drives verify/ship)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - Root-level symlink handling is slightly more explicit than the spec's minimal
+    guidance: `walk` uses `symlink_metadata` to detect the root itself, and if the
+    *root path itself* is a symlink (not a symlink encountered *during* recursion),
+    it resolves that one, explicit, user-provided root so pointing `walk` directly
+    at a symlinked file/dir still works — while symlinks encountered while
+    recursing are never followed. This is consistent with "no symlink loops" (a
+    symlink can only be resolved once, at the explicit root, never recursively)
+    and is covered by `no_symlink_loops`.
+  - `SKILL_FILENAME` matching is case-sensitive by design (documented on the
+    constant per the spec's "document the case-sensitivity choice in a comment"
+    instruction); `only_exact_skill_md_is_matched` asserts `skill.md`, `SKILL.MD`,
+    and `SKILL.md~` are all excluded from directory discovery.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - None beyond the spec's existing Out-of-scope list (rules/findings/CLI are
+    later specs).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing major; the fixed Outputs shape and the Notes section (std-only
+   recursion, `fs::read` + `String::from_utf8`, sort-then-parse) left little
+   ambiguity. The one judgment call was how literally to take "explicit file
+   is honored regardless of its name" when the *root itself* is a symlink to a
+   file — the spec's symlink guidance is written with directory recursion in
+   mind, so I extended the same "don't silently loop, but honor what the user
+   explicitly pointed at" spirit to that one edge case and documented it above.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No — DEC-004/DEC-005 plus the three constraints covered everything needed;
+   `SPEC-001`'s `parse`/`Skill` reuse seam was exactly as documented.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing structural; would keep the same std-only recursion + sort-then-parse
+   approach. Might write the case-sensitivity comment slightly earlier in the
+   review pass since it's the one place a reviewer is most likely to ask "why."
 
 ---
 
