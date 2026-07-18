@@ -91,16 +91,17 @@ parse.
   `SKILL.md` parser + canonical `Skill` model (BOM / leading blanks / missing /
   unclosed / invalid frontmatter / CRLF; total `parse`, never aborts). Model
   folded in. Emitted DEC-007 (`serde_yaml_ng` + `indexmap`).
-- [~] SPEC-002 (design) — Collection tree-walker: `walk(root) -> Collection`
-  (skips `.git`/`node_modules`/`target`; single file & tree both yield a
-  collection; unreadable file → per-item entry, never aborts; path-sorted). Reuses
-  SPEC-001's `parse`. *Turning statuses/unreadables into findings is the report
-  spec's job, not the walker's.*
+- [x] SPEC-002 (shipped 2026-07-18, PR #2) — Collection tree-walker: `walk(root) ->
+  Collection` (skips `.git`/`node_modules`/`target`; single file & tree both yield
+  a collection; unreadable/non-UTF-8 file → `Unreadable` item, never aborts;
+  path-sorted). Reuses SPEC-001's `parse`. `tempfile` dev-dep only.
 - [ ] (not yet written) — Finding + `Severity` + sectioned N-skill report model
-  with stable rule ids and path-sorted ordering (consumes the walk's items and
-  `FrontmatterStatus`).
+  with stable rule ids and path-sorted ordering. **Consumes the walk's items:**
+  decides how `CollectionItem::Unreadable` and each `FrontmatterStatus`
+  (`Missing`/`Unclosed`/`Invalid`) become findings; consider whether a
+  permission-denied *subtree* also surfaces (signal `walk-unreadable-dirs`).
 
-**Count:** 1 shipped / 1 in design / 1 pending
+**Count:** 2 shipped / 0 active / 1 pending
 
 ## Design Notes
 

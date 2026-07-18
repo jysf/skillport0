@@ -7,7 +7,7 @@
 task:
   id: SPEC-002
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -57,15 +57,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 88368
+      estimated_usd: 0.58
+      duration_minutes: 65
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens from the Agent result. estimated_usd = tokens x repo rate_per_mtok 6.60 (blended, order-of-magnitude, no cache discount / no I/O split). duration is wall-clock incl. cross-turn suspension."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 86273
+      estimated_usd: 0.57
+      duration_minutes: 531
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (independent review, APPROVED). tokens_total = subagent_tokens. estimated_usd = tokens x 6.60 (order-of-magnitude). duration is wall-clock incl. suspension, not pure compute."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "implementer subagent; orchestrator fills real tokens_total at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 174641
+    estimated_usd: 1.15
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-002: collection tree-walker
@@ -315,19 +332,29 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Nothing major on the spec: the failing-test list (esp. the non-UTF-8
+   `Unreadable` case and the ignore-dir case) gave the Sonnet build a tight target
+   and it hit every AC first pass. The design→Sonnet-build→Opus-verify subagent
+   pipeline worked and, crucially, captured **real cost** — no grandfathering this
+   time (contrast SPEC-001). One refinement: the spec could have named the
+   permission-denied-*directory* behavior explicitly (see Q2).
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — The cost-metering process debt from SPEC-001 (`cost-metering-manual-sessions`)
+   is **resolved in practice** by running build/verify as metered subagents — I've
+   marked that signal accordingly. No new decision needed. The verifier surfaced a
+   small unspecified behavior (permission-denied *directories* drop silently rather
+   than becoming `Unreadable`) — recorded as a `watch` lesson `walk-unreadable-dirs`
+   rather than changing scope now, since the report-model spec is where "surface
+   unreadable subtrees" would live.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — The next STAGE-001 spec (Finding + `Severity` + sectioned report) already
+   consumes the walk; noted there that it should decide whether an `Unreadable`
+   item and a permission-denied subtree become findings (e.g. `file.unreadable`).
 
-4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
-   the defect-escape distribution is greppable across specs:
+4. **Where was the worst defect caught?** — `none` (clean Sonnet build; independent
+   Opus verify APPROVED first pass, no defects — only non-blocking nits).
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
    — <one word>

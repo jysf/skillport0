@@ -109,12 +109,12 @@ signals:
     summary: "Build/verify run as manual interactive sessions bypass subagent metering, so tokens_total is unrecoverable and the cost gate can't pass honestly."
     evidence: "SPEC-001 ship — build + verify ran as separate hand-driven Claude Code sessions; no subagent_tokens Agent result existed and /cost was not recorded, so cost-audit had to grandfather the spec."
     bar: null
-    status: open
+    status: accepted
     disposition_at: project-close
     first_flagged: 2026-07-18
     last_touched: 2026-07-18
     raised_by: claude
-    notes: "Fix: either the orchestrator spawns build/verify as metered subagents (reads subagent_tokens at ship), or each manual session runs /cost and writes the real number into cost.sessions before advancing cycle. Revisit at PROJ-001 close; until fixed, expect to grandfather each manually-run spec."
+    notes: "RESOLVED IN PRACTICE at SPEC-002: the orchestrator now spawns build (Sonnet) and verify (Opus) as metered subagents and reads subagent_tokens from the Agent result → real cost recorded, no grandfather. Fix = keep running build/verify as subagents (not hand-driven windows). SPEC-001 stays grandfathered (its cycles predate this). Confirm the habit held at PROJ-001 close, then mark done."
 
   # --- lesson: raised at SPEC-001 ship (2026-07-18) ---------------------------
   - id: spec-pin-edge-cases
@@ -128,3 +128,16 @@ signals:
     last_touched: 2026-07-18
     raised_by: claude
     notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing."
+
+  # --- lesson: raised at SPEC-002 verify (2026-07-18) -------------------------
+  - id: walk-unreadable-dirs
+    type: lesson
+    summary: "The tree-walker surfaces an unreadable *file* as CollectionItem::Unreadable, but a permission-denied *directory* is dropped silently (read_dir Err) rather than reported."
+    evidence: "N=1 (SPEC-002 verify probe) — chmod 000 on a subdir mid-walk: the walk continued and returned siblings (correct, never-abort), but the unreadable subtree vanished with no signal."
+    bar: "N=3 same-outcome"
+    status: watch
+    disposition_at: stage-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "Out of scope for the walker spec (only non-UTF-8 files were mandated to become Unreadable). Concrete carry: the STAGE-001 report-model spec should decide whether an unreadable subtree becomes a finding (e.g. dir.unreadable) alongside file.unreadable."
