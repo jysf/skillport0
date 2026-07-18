@@ -7,7 +7,7 @@
 task:
   id: SPEC-001
   type: story                      # epic | story | task | bug | chore
-  cycle: verify  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -54,11 +54,28 @@ cost:
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-17
-      notes: "parser substrate build; orchestrator fills real tokens_total/duration/usd at ship"
+      notes: "ran as a manual interactive session, NOT an orchestrator-spawned subagent, so no subagent_tokens was captured and /cost was not recorded; unrecoverable at ship — spec grandfathered in COST_AUDIT_GRANDFATHERED. See process-debt signal cost-metering-manual-sessions."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-17
+      notes: "same as build — manual session, unmetered; grandfathered."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
     tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    estimated_usd: 0.00
+    session_count: 4
+shipped_at: 2026-07-17
 ---
 
 # SPEC-001: tolerant lossless SKILL.md parser
@@ -315,7 +332,23 @@ Use table-style cases where natural.
 
 ## Reflection (Ship)
 
-1. **What would I do differently next time?** — <answer>
-2. **Does any template, constraint, or decision need updating?** — <answer>
-3. **Is there a follow-up spec I should write now before I forget?** — <answer>
-4. **Where was the worst defect caught?** — <one word> `design | build | verify | ship | escaped | none`
+1. **What would I do differently next time?** — Pin every *tolerated* edge case in
+   the spec's Failing Tests up front. The three "builder's calls" (empty fenced
+   block, `Unclosed` body, consumed fence newline) were all foreseeable; leaving
+   them open cost a design decision at build and a re-derivation at verify. Also:
+   extract referenced fixtures to disk during design, not build.
+2. **Does any template, constraint, or decision need updating?** — Two recorded as
+   signals (a close will force them): (a) `process-debt` **cost-metering-manual-sessions**
+   — running build/verify as manual interactive sessions bypasses subagent metering,
+   so `tokens_total` is unrecoverable and the cost gate can't pass honestly; fix by
+   spawning metered subagents or having manual sessions record `/cost`. (b) `lesson`
+   **spec-pin-edge-cases** — pin tolerated edge-case behavior in failing tests at
+   design time. Empty-block→`Present`-empty should also be locked with a test and
+   flagged where STAGE-002 designs `frontmatter.missing`.
+3. **Is there a follow-up spec I should write now before I forget?** — Noted in the
+   STAGE-001 / STAGE-002 backlogs: (i) the tree-walker spec must consume `parse`'s
+   `FrontmatterStatus` and turn `Missing`/`Unclosed`/`Invalid` into per-file
+   findings; (ii) a `key.duplicate` rule (STAGE-002) — the parser currently lets a
+   duplicate frontmatter key take last-write-wins rather than flagging it.
+4. **Where was the worst defect caught?** — `none` (no defects; clean build,
+   independent verify APPROVED first pass).

@@ -102,3 +102,29 @@ signals:
     last_touched: 2026-06-12
     raised_by: claude
     notes: "No auto-action. Revisit at each project close: are the fresh-session, verify, and one-PR-per-spec habits still holding?"
+
+  # --- process-debt: raised at SPEC-001 ship (2026-07-18) ----------------------
+  - id: cost-metering-manual-sessions
+    type: process-debt
+    summary: "Build/verify run as manual interactive sessions bypass subagent metering, so tokens_total is unrecoverable and the cost gate can't pass honestly."
+    evidence: "SPEC-001 ship — build + verify ran as separate hand-driven Claude Code sessions; no subagent_tokens Agent result existed and /cost was not recorded, so cost-audit had to grandfather the spec."
+    bar: null
+    status: open
+    disposition_at: project-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "Fix: either the orchestrator spawns build/verify as metered subagents (reads subagent_tokens at ship), or each manual session runs /cost and writes the real number into cost.sessions before advancing cycle. Revisit at PROJ-001 close; until fixed, expect to grandfather each manually-run spec."
+
+  # --- lesson: raised at SPEC-001 ship (2026-07-18) ---------------------------
+  - id: spec-pin-edge-cases
+    type: lesson
+    summary: "Pin tolerated edge-case behavior in the spec's Failing Tests at design time, rather than leaving it as a 'builder's call'."
+    evidence: "N=1 (SPEC-001) — three foreseeable edge cases (empty fenced block -> Present-empty, Unclosed body, consumed fence-terminator newline) were left open, costing a build-time decision + a verify-time re-derivation."
+    bar: "N=3 same-outcome"
+    status: watch
+    disposition_at: stage-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing."

@@ -642,7 +642,11 @@ write_cost_totals() {
 # template instance has no pre-process history, so this list is EMPTY.
 # Add ids (space-separated) here, or override via the env var, only if you
 # adopt the cost gate after already shipping specs without it.
-COST_AUDIT_GRANDFATHERED="${COST_AUDIT_GRANDFATHERED:-}"
+# SPEC-001: build/verify ran as manual interactive sessions (not orchestrator-
+# spawned subagents), so subagent_tokens was never captured and /cost was not
+# recorded; the real counts are unrecoverable. Grandfathered per the honest
+# escape above. Fix going forward — see signal `cost-metering-manual-sessions`.
+COST_AUDIT_GRANDFATHERED="${COST_AUDIT_GRANDFATHERED:-SPEC-001}"
 
 # True if a spec is grandfathered out of the cost audit. Accepts either a
 # bare id ("SPEC-014") or a full file stem ("SPEC-014-some-slug") and matches

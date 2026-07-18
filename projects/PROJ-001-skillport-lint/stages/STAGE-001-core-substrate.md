@@ -87,17 +87,18 @@ parse.
 > Proposed decomposition — the Design cycle turns these into specs via
 > `just new-spec "<title>" STAGE-001`. Not yet scaffolded.
 
-- [~] SPEC-001 (design) — Tolerant, lossless, order-preserving `SKILL.md` parser
-  + canonical `Skill` model (BOM / leading blanks / missing / unclosed / invalid
-  frontmatter / CRLF; total function, never aborts). *Model folded in here since
-  parser and model are one small unit.*
+- [x] SPEC-001 (shipped 2026-07-18, PR #1) — Tolerant, lossless, order-preserving
+  `SKILL.md` parser + canonical `Skill` model (BOM / leading blanks / missing /
+  unclosed / invalid frontmatter / CRLF; total `parse`, never aborts). Model
+  folded in. Emitted DEC-007 (`serde_yaml_ng` + `indexmap`).
 - [ ] (not yet written) — Collection tree-walker (skips `.git`, `node_modules`,
-  `target`; single file and tree both yield a collection; malformed file →
-  per-file finding, never abort).
+  `target`; single file and tree both yield a collection; **consumes `parse`'s
+  `FrontmatterStatus` → turns `Missing`/`Unclosed`/`Invalid` into per-file
+  findings**; malformed file never aborts).
 - [ ] (not yet written) — Finding + `Severity` + sectioned N-skill report model
   with stable rule ids and path-sorted ordering.
 
-**Count:** 0 shipped / 1 in design / 2 pending
+**Count:** 1 shipped / 0 active / 2 pending
 
 ## Design Notes
 

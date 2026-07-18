@@ -121,8 +121,11 @@ open-spec-backed rules are firm; per DEC-003 nothing heuristic is error-level.
 - [ ] (not yet written) — `lint` command (clap) wiring walker → engine → report,
   single/folder/tree.
 - [ ] (not yet written) — Human + `--json` emitters, exit codes, `--strict`.
+- [ ] (not yet written) — `key.duplicate` rule *(follow-up from SPEC-001)* — the
+  parser lets a duplicate frontmatter key take last-write-wins; flag duplicates
+  (warning) so they aren't silently dropped. Decide severity against the spec.
 
-**Count:** 0 shipped / 0 active / 5 pending
+**Count:** 0 shipped / 0 active / 6 pending
 
 ## Design Notes
 
