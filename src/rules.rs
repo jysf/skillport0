@@ -4,10 +4,13 @@
 //! (SPEC-003): given one parsed [`Skill`], run every implemented open-spec
 //! rule and return its findings, unordered — the report layer sorts them.
 //!
-//! This spec covers only frontmatter presence and the `name.*` /
-//! `description.*` / `compatibility.length` rules (the crisp, high-value
-//! identity/description batch). The rest of the catalog (`metadata.*`,
-//! `allowed-tools.*`, `body.*`, `frontmatter.unknown`) is SPEC-005.
+//! SPEC-004 covered frontmatter presence and the `name.*` / `description.*` /
+//! `compatibility.length` rules (the crisp, high-value identity/description
+//! batch). SPEC-006 completes the open-spec layer: `metadata.*`,
+//! `allowed-tools.*`, `body.empty`/`body.lines`, `frontmatter.unknown`, and
+//! `compatibility.type`; it also tightens `name.charset` to strict ASCII.
+//! Only `body.size` (the tokenizer) and `--target` widening remain, both for
+//! STAGE-003.
 //!
 //! Two locked design decisions (see the spec's "design decisions" section):
 //!
@@ -28,6 +31,20 @@ use crate::skill::{FrontmatterStatus, Skill};
 /// The `description.detail` terseness threshold (soft, tunable; info-only so
 /// a false positive is harmless). Ported from the prototype's `< 40` chars.
 const DESCRIPTION_DETAIL_THRESHOLD: usize = 40;
+
+/// `body.lines` recommended ceiling (open spec: move detail into references/).
+const BODY_LINES_THRESHOLD: usize = 500;
+
+/// Frontmatter fields defined by the open spec (`SPEC_KEYS` in the prototype).
+/// `--target` widening of this set is STAGE-003.
+const SPEC_KEYS: &[&str] = &[
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
+    "allowed-tools",
+];
 
 /// Run every implemented open-spec rule over `skill` and return its findings.
 /// Unordered — `Report::from_collection` sorts deterministically.
@@ -74,6 +91,10 @@ pub fn lint_skill(skill: &Skill) -> Vec<Finding> {
     check_name(skill, &mut findings);
     check_description(skill, &mut findings);
     check_compatibility(skill, &mut findings);
+    check_metadata(skill, &mut findings);
+    check_allowed_tools(skill, &mut findings);
+    check_body(skill, &mut findings);
+    check_unknown_fields(skill, &mut findings);
 
     findings
 }
@@ -140,11 +161,14 @@ fn check_name(skill: &Skill, findings: &mut Vec<Finding>) {
         );
     }
 
-    // Lowercase letters, digits, and hyphens only. Reject uppercase even
-    // though `char::is_alphanumeric` accepts it (mirrors the prototype).
+    // Strict ASCII: lowercase letters, digits, and hyphens only (SPEC-006,
+    // signal `name-charset-ascii`). `name` is a kebab-case identifier that
+    // must map to a directory name and be portable, so non-ASCII letters/
+    // digits (e.g. `café`, Arabic-Indic digits) are rejected too, not just
+    // uppercase ASCII.
     let invalid: String = name
         .chars()
-        .filter(|c| !(*c == '-' || (c.is_alphanumeric() && !c.is_uppercase())))
+        .filter(|c| !(c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '-'))
         .collect();
     if !invalid.is_empty() {
         push(
@@ -259,22 +283,141 @@ fn check_description(skill: &Skill, findings: &mut Vec<Finding>) {
 
 fn check_compatibility(skill: &Skill, findings: &mut Vec<Finding>) {
     if let Some(value) = skill.get("compatibility") {
-        if let Some(s) = value.as_str() {
-            let len = s.chars().count();
-            if len > 500 {
+        match value.as_str() {
+            Some(s) => {
+                let len = s.chars().count();
+                if len > 500 {
+                    push(
+                        findings,
+                        "compatibility.length",
+                        Severity::Error,
+                        format!("'compatibility' must be at most 500 characters (got {len})"),
+                        skill,
+                        Some("compatibility"),
+                    );
+                }
+            }
+            None => {
                 push(
                     findings,
-                    "compatibility.length",
-                    Severity::Error,
-                    format!("'compatibility' must be at most 500 characters (got {len})"),
+                    "compatibility.type",
+                    Severity::Warning,
+                    "'compatibility' should be a string",
                     skill,
                     Some("compatibility"),
                 );
             }
         }
-        // A non-string `compatibility` is out of scope for this spec (only
-        // `compatibility.length` is in the table); SPEC-005 may add a type
-        // check alongside the rest of the catalog.
+    }
+}
+
+fn check_metadata(skill: &Skill, findings: &mut Vec<Finding>) {
+    if let Some(value) = skill.get("metadata") {
+        match value.as_mapping() {
+            None => {
+                push(
+                    findings,
+                    "metadata.type",
+                    Severity::Warning,
+                    "'metadata' should be a key-value map",
+                    skill,
+                    Some("metadata"),
+                );
+            }
+            Some(map) => {
+                for (k, v) in map {
+                    if !v.is_string() {
+                        let key = k.as_str().unwrap_or("?");
+                        push(
+                            findings,
+                            "metadata.values",
+                            Severity::Info,
+                            format!(
+                                "metadata.{key} is not a string; the spec defines metadata as string-to-string (quote values like \"1.0\")"
+                            ),
+                            skill,
+                            Some(&format!("metadata.{key}")),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn check_allowed_tools(skill: &Skill, findings: &mut Vec<Finding>) {
+    if let Some(value) = skill.get("allowed-tools") {
+        if value.is_sequence() {
+            // Open spec defines `allowed-tools` as a space-separated string,
+            // not a list. The info-where-a-platform-accepts-a-list downgrade
+            // is STAGE-003 via `--target`.
+            push(
+                findings,
+                "allowed-tools.format",
+                Severity::Warning,
+                "the open spec defines 'allowed-tools' as a space-separated string, not a list",
+                skill,
+                Some("allowed-tools"),
+            );
+        } else if !value.is_string() {
+            push(
+                findings,
+                "allowed-tools.type",
+                Severity::Warning,
+                "'allowed-tools' should be a space-separated string",
+                skill,
+                Some("allowed-tools"),
+            );
+        }
+    }
+}
+
+fn check_body(skill: &Skill, findings: &mut Vec<Finding>) {
+    if skill.body.trim().is_empty() {
+        push(
+            findings,
+            "body.empty",
+            Severity::Warning,
+            "the SKILL.md body is empty; add instructions for the agent",
+            skill,
+            None,
+        );
+        return;
+    }
+
+    let lines = skill.body.lines().count();
+    if lines > BODY_LINES_THRESHOLD {
+        push(
+            findings,
+            "body.lines",
+            Severity::Warning,
+            format!(
+                "body is {lines} lines; the spec recommends keeping SKILL.md under {BODY_LINES_THRESHOLD} (move detail into references/)"
+            ),
+            skill,
+            None,
+        );
+    }
+
+    // body.size (the ~5000-token check) is deferred to STAGE-003, which
+    // needs the real tokenizer.
+}
+
+fn check_unknown_fields(skill: &Skill, findings: &mut Vec<Finding>) {
+    // Order-preserving iteration (the frontmatter is an `IndexMap`, not a
+    // `HashMap`) for deterministic output, per constraint
+    // `deterministic-stable-output`.
+    for key in skill.keys() {
+        if !SPEC_KEYS.iter().any(|k| k == key) {
+            push(
+                findings,
+                "frontmatter.unknown",
+                Severity::Info,
+                format!("'{key}' is not a recognized field; compliant agents ignore unknown keys"),
+                skill,
+                Some(key),
+            );
+        }
     }
 }
 
@@ -479,6 +622,32 @@ mod tests {
     }
 
     #[test]
+    fn name_charset_rejects_non_ascii_letters() {
+        let mut fm = valid_frontmatter();
+        fm.insert("name".to_string(), str_val("café-skill"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "name.charset");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Error));
+    }
+
+    #[test]
+    fn name_charset_rejects_non_ascii_digit() {
+        let mut fm = valid_frontmatter();
+        // Arabic-Indic digit ٣ ("3"), not accepted even though
+        // `char::is_numeric()` would accept it.
+        fm.insert("name".to_string(), str_val("skill-٣"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "name.charset");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Error));
+    }
+
+    #[test]
     fn name_hyphen_edges_leading_and_trailing_is_error() {
         let mut fm = valid_frontmatter();
         fm.insert("name".to_string(), str_val("-leading"));
@@ -600,6 +769,189 @@ mod tests {
         let fm = valid_frontmatter(); // no compatibility key at all
         let skill = make_skill(fm, FrontmatterStatus::Present, None);
         assert!(!has_rule(&lint_skill(&skill), "compatibility.length"));
+    }
+
+    #[test]
+    fn metadata_non_mapping_is_metadata_type_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert("metadata".to_string(), str_val("not-a-map"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "metadata.type");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn metadata_string_value_is_ok() {
+        let mut fm = valid_frontmatter();
+        let mut map = serde_yaml_ng::Mapping::new();
+        map.insert(str_val("version"), str_val("1.0"));
+        fm.insert("metadata".to_string(), YamlValue::Mapping(map));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "metadata.type"));
+        assert!(!has_rule(&findings, "metadata.values"));
+    }
+
+    #[test]
+    fn metadata_non_string_value_is_metadata_values_info() {
+        let mut fm = valid_frontmatter();
+        let mut map = serde_yaml_ng::Mapping::new();
+        map.insert(str_val("version"), YamlValue::Number(1.0.into()));
+        fm.insert("metadata".to_string(), YamlValue::Mapping(map));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "metadata.values");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn metadata_absent_is_none() {
+        let fm = valid_frontmatter();
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "metadata.type"));
+        assert!(!has_rule(&findings, "metadata.values"));
+    }
+
+    #[test]
+    fn allowed_tools_list_is_allowed_tools_format_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert(
+            "allowed-tools".to_string(),
+            YamlValue::Sequence(vec![str_val("Bash"), str_val("Read")]),
+        );
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.format");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn allowed_tools_string_is_none() {
+        let mut fm = valid_frontmatter();
+        fm.insert("allowed-tools".to_string(), str_val("Bash Read"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "allowed-tools.format"));
+        assert!(!has_rule(&findings, "allowed-tools.type"));
+    }
+
+    #[test]
+    fn allowed_tools_number_is_allowed_tools_type_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert("allowed-tools".to_string(), YamlValue::Number(1.into()));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.type");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn allowed_tools_absent_is_none() {
+        let fm = valid_frontmatter();
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "allowed-tools.format"));
+        assert!(!has_rule(&findings, "allowed-tools.type"));
+    }
+
+    #[test]
+    fn body_empty_is_body_empty_warning() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "   \n\n  ".to_string();
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "body.empty");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn body_over_500_lines_is_body_lines_warning() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "line\n".repeat(501);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "body.lines");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn body_normal_is_neither() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "Some instructions for the agent.".to_string();
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "body.empty"));
+        assert!(!has_rule(&findings, "body.lines"));
+    }
+
+    #[test]
+    fn unknown_top_level_key_is_frontmatter_unknown_info() {
+        let mut fm = valid_frontmatter();
+        fm.insert("random_field".to_string(), str_val("hello"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "frontmatter.unknown");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn only_known_fields_yields_no_unknown_finding() {
+        let fm = valid_frontmatter();
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "frontmatter.unknown"));
+    }
+
+    #[test]
+    fn compatibility_non_string_is_compatibility_type_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert("compatibility".to_string(), YamlValue::Number(1.into()));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "compatibility.type");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn compatibility_string_under_500_is_none() {
+        let mut fm = valid_frontmatter();
+        fm.insert("compatibility".to_string(), str_val("works with any agent"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "compatibility.type"));
+        assert!(!has_rule(&findings, "compatibility.length"));
     }
 
     #[test]

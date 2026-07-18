@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build ran as a Sonnet subagent
   created_at: 2026-07-18
 
 references:
@@ -57,6 +57,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -272,28 +280,39 @@ question). `body.empty` and `body.lines` are line/emptiness checks and belong he
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-006-rules2`
+- **PR (if applicable):** none (not opened by build cycle)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - None in behavior. Added one extra `tests/cli.rs` assertion (the spec
+    marked it optional) covering `allowed-tools.format` and
+    `frontmatter.unknown` flowing through the real binary, alongside the
+    existing `name.charset` CLI test.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - `body.size` (tokenizer) and `--target` widening remain for STAGE-003, as
+    already scoped out by this spec.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing; the rule table, exact severities, `SPEC_KEYS` set, and the
+   `initial_stuff/lint.rs` reference implementation made this close to a
+   direct, low-risk port onto the current `Finding`/`Skill` types.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No. DEC-002/003/005 and the SPEC-004 skip discipline covered every
+   judgment call needed (severities, id stability, order-preserving
+   iteration for `frontmatter.unknown`).
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing material; would port the same checks in the same order
+   (compatibility → metadata → allowed-tools → body → unknown-fields) since
+   it mirrors the prototype and kept the diff easy to review against the
+   spec table.
 
 ---
 

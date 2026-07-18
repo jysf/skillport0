@@ -48,6 +48,24 @@ fn lint_bad_fixture_exits_1_and_mentions_name_charset() {
 }
 
 #[test]
+fn lint_bad_fixture_mentions_spec_006_rules() {
+    // SPEC-006: allowed-tools.format and frontmatter.unknown are new rules
+    // that must flow through the unchanged CLI (main.rs/emit.rs untouched).
+    let out = run(&[fixture("lint-fixtures/bad").to_str().unwrap()]);
+
+    assert_eq!(out.status.code(), Some(1));
+    let stdout = string(&out.stdout);
+    assert!(
+        stdout.contains("allowed-tools.format"),
+        "expected stdout to mention allowed-tools.format, got: {stdout}"
+    );
+    assert!(
+        stdout.contains("frontmatter.unknown"),
+        "expected stdout to mention frontmatter.unknown, got: {stdout}"
+    );
+}
+
+#[test]
 fn good_fixture_strict_still_exits_0() {
     let out = run(&[fixture("lint-fixtures/good").to_str().unwrap(), "--strict"]);
 
