@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -57,6 +57,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent; orchestrator fills real tokens_total/duration/estimated_usd at ship from the Agent result"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -264,28 +272,39 @@ make it error/warning.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-004-rules`
+- **PR (if applicable):** none (build cycle only; no PR/merge per instructions)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - None in behavior. One deliberate interpretation: `compatibility.type` is
+    explicitly out of scope for this spec's table (only `compatibility.length`
+    is listed), so a non-string `compatibility` value is silently skipped
+    rather than flagged — left as a comment in `check_compatibility` for
+    SPEC-005 to pick up alongside the rest of the catalog.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - SPEC-005 covers `metadata.*`, `allowed-tools.*`, `body.*`,
+    `frontmatter.unknown`, and could also add `compatibility.type` if the
+    catalog wants it.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing major; the two locked design decisions (frontmatter-status
+   short-circuit, empty-Present → field-required) were stated precisely enough
+   to implement directly and write a test against.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No. `no-heuristic-error`, `deterministic-stable-output`, and DEC-002/003
+   covered every judgment call (severities, threshold placement).
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing; porting `initial_stuff/lint.rs` rule-by-rule onto `Finding` +
+   `FrontmatterStatus` was straightforward and the spec's Failing Tests list
+   mapped 1:1 onto `#[test]` functions.
 
 ---
 

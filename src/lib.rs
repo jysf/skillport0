@@ -7,10 +7,12 @@
 
 pub mod parse;
 pub mod report;
+pub mod rules;
 pub mod skill;
 pub mod walk;
 
 pub use parse::parse;
 pub use report::{Finding, Report, Section, Severity, Summary};
+pub use rules::lint_skill;
 pub use skill::{Frontmatter, FrontmatterStatus, Skill, YamlValue};
 pub use walk::{walk, Collection, CollectionItem};
