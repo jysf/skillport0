@@ -2,54 +2,65 @@
 
 > **Per-repo toolchain facts a cold build sub-agent needs.** A fresh
 > build/verify sub-agent re-imports its model's generic tool-priors and burns
-> loops rediscovering this repo's specifics (a lint plugin that isn't installed,
-> a test helper that is, which files run under Node). This is the one place the
-> template *can't* fill in — these are per-repo truths. **Fill it in once, keep
-> it short and current, and inject it into every build prompt** (see AGENTS.md
-> §15 "During build"). If a fact here goes stale, a sub-agent will trust it and
-> waste the loop anyway — so prune aggressively.
->
-> **REPLACE every `[REPLACE: …]` below.** Delete rows that don't apply; add ones
-> that do. Keep it to facts that are non-obvious from reading `package.json` /
-> `pyproject.toml` alone.
+> loops rediscovering this repo's specifics. Fill it in once, keep it short and
+> current, and inject it into every build prompt (see AGENTS.md §15). Prune
+> aggressively — a stale fact here wastes the loop it was meant to save.
+
+> **Status:** skillport has no `src/` yet (first build spec is STAGE-001). Facts
+> below are the *intended* toolchain from Project Design; the first build spec
+> establishes them for real — update this file if reality diverges.
 
 ## Package manager
 
-[REPLACE: The exact package manager and version pin — e.g. `pnpm@9` (NOT npm; a
-`package-lock.json` here is a mistake), or `uv` (NOT pip). How to install deps,
-how to add one. Any lockfile the CI enforces.]
+Cargo (Rust, **edition 2021**). Use the **current stable** toolchain. Add deps
+with `cargo add`. `Cargo.lock` is committed and CI-enforced.
+
+- **Do NOT** copy the prototype's `=`-exact version pins (`clap = "=4.5.20"`,
+  `serde_yaml = "=0.9.34"`, `indexmap = "=2.2.6"`) — they were a Rust-1.75
+  artifact. Use current caret ranges (DEC-005).
+- **Do NOT** use `serde_yaml` — it is **deprecated/unmaintained**. Pick a current
+  maintained YAML crate during the parser spec and record the choice in a DEC
+  (`no-new-top-level-deps-without-decision`). Frontmatter must stay
+  **order-preserving** (an index-map-style structure, not `HashMap`) and lossless.
 
 ## Test framework + assertion library
 
-[REPLACE: The runner and the assertion/matcher lib a build sub-agent must use —
-e.g. Vitest with its built-in `expect` (NOT Jest; no `jest` global exists), or
-pytest with plain `assert`. How to run the full suite and a single test. Where
-tests live and the file-name pattern that gets picked up.]
+Built-in `cargo test` — no external test runner. Unit tests in a
+`#[cfg(test)] mod tests` beside the code; integration tests in `tests/`.
+
+- Full suite: `cargo test`. Single test: `cargo test <name>`.
+- Rule tests exercise real `SKILL.md` files under `lint-fixtures/good/` and
+  `lint-fixtures/bad/` (seed set exists in the prototype under `initial_stuff/`).
+- Required invariant test (STAGE-003): a **spec-perfect skill yields zero findings**.
 
 ## Lint / format quirks
 
-[REPLACE: The non-default rules that trip cold agents — e.g. `eslint-plugin-react-hooks`
-is NOT installed, so don't add its disable comments; Prettier owns formatting so
-don't hand-align; `ruff` runs in CI and fails on unused imports. The exact
-lint/format commands.]
+- `cargo fmt` owns formatting — don't hand-align; run `cargo fmt --check` before ship.
+- `cargo clippy -- -D warnings` runs in CI and **fails on any warning**. No
+  `unwrap`/`expect` on fallible IO/parse paths — a malformed skill is a *finding*,
+  never a panic (DEC-005).
 
 ## Runtime globals / environments
 
-[REPLACE: Which files run in which runtime, so globals resolve — e.g.
-`scripts/*.mjs` run under Node (so `process`, `__dirname` are defined; a browser
-`no-undef` lint config will falsely flag them); `src/**` targets the browser (no
-`process.env` at runtime). Any global provided by a test setup file.]
+Single native binary; no runtime env. **stdout = the report** (human/JSON/SARIF),
+**stderr = diagnostics** — never print diagnostics to stdout or machine consumers
+break. Output must be deterministic and **path-sorted** (DEC-005).
 
 ## Installed test/dev utilities (don't re-add)
 
-[REPLACE: Dev utilities already present that a cold agent tends to re-install or
-assume-absent — e.g. `@testing-library/user-event` IS installed (import it, don't
-reach for `fireEvent`); `msw` handles network mocks. This is the list that
-prevents the sanctioned-but-unnecessary dev-dep add (see the deps constraint /
-DEC-004 rule 4).]
+Nothing yet (no `Cargo.toml` in the repo root — the prototype's is under
+`initial_stuff/`). When STAGE-001 lands, list here what's already a dependency so
+a cold agent doesn't re-add it. Likely core deps: a CLI parser (`clap` 4, derive),
+`serde` + a maintained YAML crate, an ordered-map crate, an error crate
+(`anyhow` at the CLI boundary). A tokenizer crate arrives in STAGE-003 (`body.size`).
 
 ## Known gotchas
 
-[REPLACE: The repo-specific traps that cost real loops — e.g. the dev server must
-be running for integration tests; env var `X` must be set or the build silently
-no-ops; a codegen step (`just codegen`) must run before typecheck. One line each.]
+- The prototype under `initial_stuff/` is **converter-first** (`inspect`/`convert`/
+  `push`/`profiles`) — that machinery is out of scope (DEC-001). Reuse only
+  `lint.rs` + `lint-fixtures/`; port them onto the collection-first substrate.
+- The prototype's `claude/cursor/codex/vercel` profiles are **unverified guesses**
+  — do not encode them as errors/warnings; Claude fields must be verified from
+  docs.claude.com first, others stay advisory (DEC-002).
+- Rule ids and the `--json`/`--sarif` schema are a **public contract** — renaming a
+  rule id or changing a field is a MAJOR bump, not a casual edit (DEC-005).
