@@ -262,7 +262,7 @@ Use table-style cases where natural.
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
 - **Branch:** `feat/spec-001-parser`
-- **PR (if applicable):** opened against `main`, referencing PROJ-001 / STAGE-001 / SPEC-001.
+- **PR (if applicable):** [#1](https://github.com/jysf/skillport0/pull/1) → `main`, referencing PROJ-001 / STAGE-001 / SPEC-001.
 - **All acceptance criteria met?** yes — every AC and all 12 unit cases + the
   fixture-backed case pass; `cargo test` (14 tests) green, `cargo clippy -- -D
   warnings` clean, `cargo fmt --check` clean.
