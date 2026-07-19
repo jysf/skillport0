@@ -119,9 +119,12 @@ stage progresses).
   Verify APPROVED, 0 punch-list. **Human-only (unblocked):** set the token secret + do
   the first `cargo publish` + push the tag — per RELEASING.md. Crate name re-confirmed
   free (404).
-- [ ] (not yet written) SPEC-016 — **Action speedup** (S): `action.yml` downloads the
-  release binary (by tag/OS) with a `cargo install --git` fallback; update the Action's
-  README/example.
+- [~] SPEC-016 (build) — **Action speedup** (M): a testable `scripts/install-release.sh`
+  maps runner OS/arch → the SPEC-014 archive, downloads + sha256-verifies + extracts the
+  prebuilt binary onto PATH; `action.yml` runs it, with dtolnay + `cargo install --git`
+  gated to run only on fallback (no release yet / unsupported platform). `--print-plan`
+  dry mode makes the mapping verifiable before v0.1.0. `version` input (default `latest`).
+  README "Use in CI" updated. No src/contract change.
 - [ ] (not yet written) SPEC-017 — **Cut v0.1.0** (S, release-spec): CHANGELOG + README
   install matrix + `just next-version`; verify each channel installs. **Human-only**:
   push the `v0.1.0` tag, trigger publish.
