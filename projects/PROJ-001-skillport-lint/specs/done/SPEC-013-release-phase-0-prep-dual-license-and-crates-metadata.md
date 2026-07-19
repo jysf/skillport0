@@ -7,7 +7,7 @@
 task:
   id: SPEC-013
   type: chore                      # epic | story | task | bug | chore
-  cycle: build  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: S                    # S | M | L  (L means split it)
@@ -58,15 +58,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 64164
+      estimated_usd: 0.42
+      duration_minutes: 15
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (order-of-magnitude). duration wall-clock. Smallest build so far (config/packaging only)."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 54156
+      estimated_usd: 0.36
+      duration_minutes: 3
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent; ran cargo publish --dry-run on the clean committed tree (exit 0), diffed the Apache text against main, confirmed no src/Cargo.lock change. APPROVED, 0 punch-list."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 118320
+    estimated_usd: 0.78
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-013: release phase-0 prep — dual license + crates.io metadata
@@ -142,20 +159,20 @@ no runtime code or contract change.
 
 ## Acceptance Criteria
 
-- [ ] `LICENSE-MIT` and `LICENSE-APACHE` both exist at repo root; no bare `LICENSE`
+- [x] `LICENSE-MIT` and `LICENSE-APACHE` both exist at repo root; no bare `LICENSE`
       file remains. `LICENSE-APACHE` is the original Apache-2.0 text (unchanged);
       `LICENSE-MIT` is the standard MIT text with `Copyright (c) 2026 jysf`.
-- [ ] `Cargo.toml` declares `license = "MIT OR Apache-2.0"` **and** `authors`,
+- [x] `Cargo.toml` declares `license = "MIT OR Apache-2.0"` **and** `authors`,
       `readme`, `homepage`, `keywords` (≤ 5, each ≤ 20 chars), `categories` (only valid
       crates.io slugs). No `license-file` key.
-- [ ] `cargo publish --dry-run` (equivalently `cargo package`) **succeeds** and the
+- [x] `cargo publish --dry-run` (equivalently `cargo package`) **succeeds** and the
       packaged file list includes `LICENSE-MIT`, `LICENSE-APACHE`, and `README.md`.
-- [ ] `cargo metadata --no-deps --format-version 1` shows the new fields
+- [x] `cargo metadata --no-deps --format-version 1` shows the new fields
       (authors/keywords/categories/homepage) populated for the `skillport` package.
-- [ ] The README `## License` section states the dual MIT-OR-Apache license and links
+- [x] The README `## License` section states the dual MIT-OR-Apache license and links
       both `LICENSE-MIT` and `LICENSE-APACHE`; no "call to confirm" / "inherited from
       the template" language remains.
-- [ ] `cargo test` / `clippy --all-targets -- -D warnings` / `fmt --check` still green;
+- [x] `cargo test` / `clippy --all-targets -- -D warnings` / `fmt --check` still green;
       no runtime code changed; no new dependency; no `--json`/SARIF/exit-code/rule-id
       change (DEC-005).
 
@@ -282,22 +299,30 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Nothing material. The design-time probe (checking crates.io for the name, scanning
+   for identity drift, confirming the on-disk license) made this the smallest, fastest
+   cycle so far — the "failing test" was literally `cargo publish --dry-run`, which is
+   the exact command a release runs, so build was pure transcription. The pattern for a
+   packaging spec: make the real release command the acceptance test.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. DEC-009 already sequenced this; DEC-005 kept it honest (0 lines under `src/`).
+   The `cargo publish --dry-run` CI guard the build added is a nice standing tripwire so
+   packaging can't silently regress before SPEC-015 actually publishes — no signal
+   needed, it's just good hygiene.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — Yes, the STAGE-004 backlog continues: SPEC-014 (release workflow — cross-compile
+   matrix on `v*`, strip/archive/sha256/attach), then SPEC-015 (crates.io publish —
+   re-confirm the name is free, then the human-only `cargo publish`), SPEC-016 (Action
+   downloads the release binary), SPEC-017 (cut v0.1.0 — CHANGELOG + install matrix +
+   human-only tag push). SPEC-014 is next.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — none
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
    §12 behavioral pre-flight for that surface.)*

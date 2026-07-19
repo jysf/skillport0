@@ -99,12 +99,12 @@ Ordered per DEC-009's "Attack plan". First spec designed; the rest are proposed
 decomposition (turned into specs via `just new-spec` / `just new-release-spec` as the
 stage progresses).
 
-- [~] SPEC-013 (build) — **Release Phase-0 prep** (S): add `LICENSE-MIT` +
-  `LICENSE-APACHE` (rename the current Apache `LICENSE`); fill crates.io Cargo metadata
-  (`readme`, `keywords`, `categories`, `homepage`, `authors`); update the stale README
-  License section; `cargo publish --dry-run` clean. No runtime code. Design-time probe:
-  crate name `skillport` confirmed **free** on crates.io (404); identity already
-  consistent except the README License section.
+- [x] SPEC-013 (shipped 2026-07-18, PR #13) — **Release Phase-0 prep** (S): dual
+  `LICENSE-MIT` + `LICENSE-APACHE`; crates.io Cargo metadata (`readme`, `keywords`,
+  `categories`, `homepage`, `authors`); README License section updated; a
+  `cargo publish --dry-run` CI guard. Proven by dry-run exit 0. No runtime code / no
+  contract change. Crate name `skillport` confirmed free on crates.io (re-confirm at
+  SPEC-015). Verify APPROVED, 0 punch-list, clean first try.
 - [ ] (not yet written) SPEC-014 — **Release workflow** (M): `.github/workflows/release.yml`
   cross-compiling the macOS/Linux/Windows matrix on `v*`, strip + archive + sha256 +
   attach to the Release; provenance stamp. (Verifiable via a dry-run / `act` or a
@@ -119,7 +119,7 @@ stage progresses).
   install matrix + `just next-version`; verify each channel installs. **Human-only**:
   push the `v0.1.0` tag, trigger publish.
 
-**Count:** 0 shipped / 0 active / 5 pending (SPEC-013 designed next; SPEC-014…017 proposed)
+**Count:** 1 shipped / 0 active / 4 pending (SPEC-013 shipped; SPEC-014 next; SPEC-015…017 proposed)
 
 ## Design Notes
 
