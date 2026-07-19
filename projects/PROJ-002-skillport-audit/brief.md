@@ -1,8 +1,8 @@
 ---
 project:
   id: PROJ-002
-  status: proposed                  # NOT STARTED — framed after PROJ-001 ships
-  activity: null
+  status: active                    # framed 2026-07-19 (pivoted to before PROJ-001's release — see note)
+  activity: framing
   priority: high
   target_ship: null
 
@@ -35,11 +35,26 @@ value:
 
 # PROJ-002: The audit (library health + security + provenance)
 
-> **STATUS: PROPOSED — NOT STARTED.** This brief captures Part 3 of the seed so
-> the wave is defined and its decisions (DEC-006) are recorded, but no stages or
-> specs exist yet and no code is written. Frame this wave (GETTING_STARTED Step 2)
-> **only after PROJ-001 ships.** Its `STAGE-*` / `SPEC-*` numbers continue
-> repo-wide from wherever PROJ-001 ends (e.g. STAGE-004+).
+> **STATUS: ACTIVE (framing) — started 2026-07-19.** Framed while PROJ-001 is
+> **code-complete but not yet released** (v0.1.0 tag on hold pending a project
+> **rename** — the `skillport` name collides with existing apps). This was a
+> deliberate call to keep momentum: the release is blocked on a human naming
+> decision, so the `audit` wave's design advances in parallel. The eventual rename
+> spec sweeps PROJ-002 code along with PROJ-001, so no work is lost. Stages/specs
+> continue repo-wide: **first stage = STAGE-005, first spec = SPEC-018.**
+>
+> **Framing decisions (2026-07-19, from the user):**
+> - **One `audit` command** with sectioned output + focus flags (e.g. `--security`),
+>   not split commands (resolves `p2-audit-command-shape`).
+> - **First stage = Inventory + library health** (STAGE-005); permissions manifest
+>   and provenance follow (STAGE-006/007).
+> - **Overlap detection = lexical/normalized only, no ML/embeddings** — deterministic
+>   (DEC-005), no heavy dep (resolves `p2-overlap-detection-method`).
+> - **AGENTS.md / instruction-file health (`agents-md-audit` signal) = parked** —
+>   PROJ-002 stays skill-focused for now; revisit at a later frame.
+> - Deferred to the provenance stage: lockfile format/location (`p2-lockfile-format-location`,
+>   lean: `.<name>.lock` TOML at the audited root, committed) and the recognized-source
+>   set (`p2-recognized-source-set`, lean: git remote + local path as the MVP).
 
 ## What This Project Is
 
@@ -87,28 +102,36 @@ the substrate exists, audit is an additive layer, not a rewrite.
 - Format conversion / migration (DEC-001, permanently).
 - Trusting self-asserted `metadata.author` / `version` as provenance (DEC-006).
 
-## Open Questions (surface at Frame — see guidance/questions.yaml `p2-*`)
+## Open Questions (resolved / deferred at Frame 2026-07-19 — see guidance/questions.yaml `p2-*`)
 
-1. One `audit` command with sections + a `--security` flag, or split `audit`
-   (health) from a separate `provenance`/`sbom` command? *(Lean: one command,
-   sections, focus flags.)*
-2. Lockfile format + location — `.skillport.lock` (TOML/JSON?) at the audited
-   root; committed to the repo or not?
-3. Overlap detection method — exact/normalized string match to start, or embed
-   for semantic similarity later? *(Lean: start lexical, no ML dep.)*
-4. What counts as a recognized "source" for provenance (git remote, registry,
-   local)? Define the minimal viable set.
+1. **`p2-audit-command-shape` — ANSWERED:** one `audit` command, sectioned output +
+   focus flags (`--security`). Not split.
+2. `p2-lockfile-format-location` — **deferred to the provenance stage (STAGE-007).**
+   Lean: `.<name>.lock` (TOML) at the audited root, committed.
+3. **`p2-overlap-detection-method` — ANSWERED:** lexical/normalized only, no ML/embeddings
+   (deterministic, no heavy dep).
+4. `p2-recognized-source-set` — **deferred to the provenance stage (STAGE-007).** Lean:
+   git remote (origin) + local path as the MVP recognized sources; registry later.
 
 ## Stage Plan
 
-*Not yet defined — framed after PROJ-001 ships. The three suggested stages above
-become STAGE-004+ (repo-wide continuous numbering).*
+Framed 2026-07-19. Repo-wide continuous numbering continues from PROJ-001 (which ended
+at STAGE-004 / SPEC-017).
 
-- [ ] (not yet defined) — Inventory + library health
-- [ ] (not yet defined) — Permissions manifest (`--security`)
-- [ ] (not yet defined) — Provenance & integrity (SBOM lockfile)
+- [~] **STAGE-005 — Inventory + library health** *(active; first stage)* — the `audit`
+  command skeleton + per-collection inventory (name / path / size / token count),
+  lexical description **overlap/collision** detection, and oversized / likely-dead-skill
+  + description-vs-body coherence heuristics; sectioned human + `--json` report reusing
+  PROJ-001's report/emit/tokenizer. `audit` is a **report, not a CI gate** (advisory
+  severities; DEC-003).
+- [ ] **STAGE-006 — Permissions manifest (`--security`)** *(planned)* — per skill, surface
+  *what it can do*: declared `allowed-tools`, presence/type of `scripts/`, network hints;
+  flag execute-/network-capable skills. A `--security` focus mode.
+- [ ] **STAGE-007 — Provenance & integrity (SBOM lockfile)** *(planned)* — a
+  content-hash + observed-source lockfile (DEC-006); flag drift / new-unknown /
+  unrecognized-source. Fuses with STAGE-006 into the capability-plus-drift signal.
 
-**Count:** 0 shipped / 0 active / 0 defined
+**Count:** 0 shipped / 1 active (STAGE-005) / 2 planned
 
 ## Dependencies
 

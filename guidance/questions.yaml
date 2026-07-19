@@ -57,11 +57,11 @@ questions:
   - id: p2-audit-command-shape
     question: "One `audit` command with sections + a --security flag, or split audit (health) from a separate provenance/sbom command?"
     priority: medium
-    status: open
+    status: answered
     raised_by: claude
     raised_at: 2026-07-17
     assigned_to: null
-    notes: "Lean: one command, sections, focus flags — provenance and permissions reinforce each other."
+    notes: "ANSWERED at the PROJ-002 frame (2026-07-19, user): ONE `audit` command with sectioned output + focus flags (`--security`). Not split — one binary surface to build/document/version, matching the `lint` precedent."
 
   - id: p2-lockfile-format-location
     question: "Lockfile format and location — .skillport.lock (TOML/JSON?) at the audited root; committed or not?"
@@ -74,11 +74,11 @@ questions:
   - id: p2-overlap-detection-method
     question: "Description overlap detection — exact/normalized string match to start, or embed for semantic similarity later?"
     priority: medium
-    status: open
+    status: answered
     raised_by: claude
     raised_at: 2026-07-17
     assigned_to: null
-    notes: "Lean: start lexical, no ML dependency."
+    notes: "ANSWERED at the PROJ-002 frame (2026-07-19, user): lexical/normalized string similarity only, no ML/embeddings — deterministic (DEC-005) and no heavy dependency. Semantic similarity stays a future maybe."
 
   - id: p2-recognized-source-set
     question: "What counts as a recognized 'source' for provenance (git remote, registry, local)? Define the minimal viable set."
