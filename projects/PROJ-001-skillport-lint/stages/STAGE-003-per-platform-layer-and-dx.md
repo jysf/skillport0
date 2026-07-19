@@ -5,7 +5,7 @@
 
 stage:
   id: STAGE-003                     # stable, zero-padded, continuous across the repo
-  status: active                  # proposed | active | shipped | cancelled | on_hold
+  status: shipped                 # proposed | active | shipped | cancelled | on_hold
   priority: medium                  # critical | high | medium | low
   target_complete: null             # optional: YYYY-MM-DD
 
@@ -15,7 +15,7 @@ repo:
   id: skillport
 
 created_at: 2026-07-17
-shipped_at: null
+shipped_at: 2026-07-18
 
 value_contribution:
   advances: "Differentiation beyond the table-stakes open layer — verified per-platform awareness and CI ergonomics — plus the DX that makes lint trustworthy and adoptable."
@@ -158,11 +158,46 @@ folded into SPEC-012.
 
 ## Stage-Level Reflection
 
-*Filled in when status moves to shipped.*
+*Filled in when status moves to shipped (2026-07-18).*
 
-- **Did we deliver the outcome in "What This Stage Is"?** <not yet>
-- **How many specs did it actually take?** <not yet>
-- **What changed between starting and shipping?** <not yet>
-- **Lessons that should update AGENTS.md, templates, or constraints?** <not yet>
-- **Signals dispositioned at this close?** <not yet>
-- **Should any spec-level reflections be promoted to stage-level lessons?** <not yet>
+- **Did we deliver the outcome in "What This Stage Is"?** Yes, in full. Every Success
+  Criterion is met and verified: `--target claude` widens `frontmatter.unknown` and
+  downgrades `allowed-tools.format`→info, each backed by a cited docs.claude.com line +
+  source comment (SPEC-011, and completed to 13 fields in SPEC-012); no unverified
+  per-platform behavior is emitted above info (DEC-002 held every spec); `body.size`
+  uses a real `cl100k_base` tokenizer at info (SPEC-010); `--sarif` emits valid SARIF
+  2.1.0 (SPEC-008); a reusable GitHub Action + repo CI run `lint` with correct exit
+  codes and are green on real runners (SPEC-009); the README documents every rule id +
+  severity + flags, guarded by an anti-drift test; per-rule fixtures + a spec-perfect
+  zero-findings test exist (SPEC-012). `skillport lint` is now a differentiated,
+  documented, CI-ready tool.
+- **How many specs did it actually take?** Five (SPEC-008…012), exactly the planned
+  backlog — no splits, no additions beyond folding SPEC-011's enumeration follow-up
+  into SPEC-012 rather than cutting a 6th spec. Every spec was APPROVED on the first
+  verify pass with zero punch-list items.
+- **What changed between starting and shipping?** Very little drift from the frame.
+  Two refinements worth noting: (a) SPEC-011's verify surfaced that the design had
+  under-enumerated Claude's fields (8 of 13) — resolved by folding the widening into
+  SPEC-012 rather than shipping incomplete; (b) SPEC-012 turned "document the rules"
+  into "document the rules *and prove the docs can't drift*" via a code catalog + a
+  README-parsing test — a stronger deliverable than the frame asked for. The
+  per-platform correctness discipline (DEC-002) never slipped: every Claude fact is
+  doc-cited.
+- **Lessons that should update AGENTS.md, templates, or constraints?** Two new lessons
+  recorded to `guidance/signals.yaml` this close (both `watch`, N=1, below bar — not
+  codified yet): `verified-enum-transcribe-whole-table` (for doc-derived enumerations,
+  transcribe the whole primary-doc table before curating — SPEC-011) and
+  `docs-drift-as-a-test` (back any doc-that-asserts-a-fact-about-code with a
+  parse-and-compare test so staleness fails CI — SPEC-012). Neither is at its N=3 bar,
+  so no AGENTS.md change lands yet.
+- **Signals dispositioned at this close?** Yes — all stage-owned (`disposition_at:
+  stage-close`) open/watch signals walked, `last_touched` bumped, no silent carry:
+  `spec-pin-edge-cases` (kept watch, still N=1 — no new occurrence in STAGE-003; a
+  loosely-related SPEC-011 prose-vs-behavior-table inconsistency was noted but is a
+  distinct proofread issue, not a new instance); `flag-default-explicitness` (template
+  seed from another repo, no skillport occurrence — kept watch, noted as non-native);
+  `walk-unreadable-dirs` + `name-charset-ascii` already `codified` (terminal). Added the
+  two new lessons above as `watch`.
+- **Should any spec-level reflections be promoted to stage-level lessons?** The two
+  promoted above (`verified-enum-transcribe-whole-table`, `docs-drift-as-a-test`) came
+  from SPEC-011/012 ship reflections. The rest were spec-local and need no promotion.

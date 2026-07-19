@@ -47,9 +47,9 @@ signals:
     status: watch
     disposition_at: stage-close
     first_flagged: 2026-05-20
-    last_touched: 2026-06-12
+    last_touched: 2026-07-18
     raised_by: claude
-    notes: "At bar (N=3). Codify at the owning stage's close — spec template / Prompt 2b should require each flag's default, not just its accepted values. Do NOT codify mid-stage."
+    notes: "At bar (N=3). Codify at the owning stage's close — spec template / Prompt 2b should require each flag's default, not just its accepted values. Do NOT codify mid-stage. [STAGE-003 close 2026-07-18: walked — this is a TEMPLATE SEED from another repo (SPEC-026/028/029 are not skillport specs); no skillport occurrence, so not codified here. Kept watch; a real PROJ-001 owner should either adopt it for the skillport spec template or drop it as non-native at project close.]"
 
   # --- process-debt: THE lever — re-flagged twice, still un-adopted -----------
   - id: lightweight-verify-lane
@@ -127,7 +127,7 @@ signals:
     first_flagged: 2026-07-18
     last_touched: 2026-07-18
     raised_by: claude
-    notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing. [STAGE-001 close 2026-07-18: walked, kept watch] [STAGE-002 close 2026-07-18: walked, kept watch — concrete carry (lock empty-Present frontmatter) was DONE in SPEC-004; no new occurrence in STAGE-002; still below N=3]"
+    notes: "Watch across STAGE-001 specs. Concrete carry: lock empty-block -> Present-empty with a test and flag it where STAGE-002 designs frontmatter.missing. [STAGE-001 close 2026-07-18: walked, kept watch] [STAGE-002 close 2026-07-18: walked, kept watch — concrete carry (lock empty-Present frontmatter) was DONE in SPEC-004; no new occurrence in STAGE-002; still below N=3] [STAGE-003 close 2026-07-18: walked, kept watch — still N=1. SPEC-011 had a related but distinct friction (its Failing-Tests prose said the good-claude fixture was 0/0/0, contradicting its own Behavior table where an allowed-tools list stays as a downgraded info); build correctly deferred to the table. That's a 'proofread spec prose against the spec's own behavior table at design' issue, adjacent to but not the same as pinning edge-case behavior in Failing Tests — not counted as a new instance. Still below N=3.]"
 
   # --- lesson: raised at SPEC-002 verify (2026-07-18) -------------------------
   - id: walk-unreadable-dirs
@@ -154,3 +154,29 @@ signals:
     last_touched: 2026-07-18
     raised_by: claude
     notes: "RESOLVED at SPEC-006 (2026-07-18): name.charset tightened to strict ASCII [a-z0-9-]. The broader pattern — 'faithful prototype port can carry the prototype's latent bugs; verify ported logic against the spec, not just the prototype' — is the lasting lesson; keep it in mind for any future prototype ports."
+
+  # --- lesson: raised at SPEC-011 ship (2026-07-18) ---------------------------
+  - id: verified-enum-transcribe-whole-table
+    type: lesson
+    summary: "When a spec encodes an enumeration derived from primary docs (e.g. a platform's recognized fields), transcribe the WHOLE source table into the spec first, then curate — don't hand-pick items while drafting prose."
+    evidence: "N=1 (SPEC-011) — design cited 8 of Claude's 13 documented frontmatter fields for CLAUDE_KEYS; verify caught the 5 omitted (when_to_use, argument-hint, agent, paths, shell). Nothing false was encoded (DEC-002 held), but the value promise ('a real Claude skill isn't flagged unknown') was only partly met until SPEC-012 completed it."
+    bar: "N=3 same-outcome"
+    status: watch
+    disposition_at: stage-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "RESOLVED for the instance at SPEC-012 (CLAUDE_KEYS completed to 13). Keep watch as a general design habit for any future doc-derived enumeration (e.g. a second --target). Below N=3. [STAGE-003 close 2026-07-18: recorded + walked, kept watch]"
+
+  # --- lesson: raised at SPEC-012 ship (2026-07-18) ---------------------------
+  - id: docs-drift-as-a-test
+    type: lesson
+    summary: "When docs assert a fact ABOUT code (a rule table, a flag list, a supported-values enumeration), back the assertion with a test that parses the doc and compares it to a single code-level source of truth — so staleness fails CI instead of shipping."
+    evidence: "N=1 (SPEC-012) — the README rule-reference table is checked against the code RULES catalog by readme_rule_table_matches_catalog; verify confirmed it genuinely fails on divergence (not a tautology). Prompted by the pre-SPEC-012 README being badly stale (Status table stuck at SPEC-006)."
+    bar: "N=3 same-outcome"
+    status: watch
+    disposition_at: stage-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "Below N=3, not codified. Reusable beyond skillport: any doc-that-mirrors-code (CLI help, config reference) is a drift candidate. [STAGE-003 close 2026-07-18: recorded + walked, kept watch]"
