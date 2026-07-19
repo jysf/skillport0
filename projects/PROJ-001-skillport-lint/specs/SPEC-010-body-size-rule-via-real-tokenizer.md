@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -58,6 +58,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent build cycle; orchestrator fills real tokens_total/duration/estimated_usd at ship from the Agent result's subagent_tokens"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -230,28 +238,65 @@ Written now (design). Location: `#[cfg(test)] mod tests` in `src/rules.rs`
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-010-tokenizer`
+- **PR (if applicable):** none yet (build cycle only; not opened per this
+  cycle's instructions)
+- **All acceptance criteria met?** yes
+  - `body.size` added, id `"body.size"`, severity info, fires only when the
+    real token count exceeds `BODY_TOKENS_THRESHOLD` (5000).
+  - Real tokenizer confirmed: `body_token_count_uses_a_real_tokenizer_not_chars_4`
+    pins `body_token_count("tokenization")` == 2 (cl100k_base's actual
+    output) and asserts it differs from `chars/4` (== 3).
+  - Short/normal body -> no finding; over-threshold body (700 repeats of a
+    47-char sentence, 7001 tokens) -> exactly one `body.size` info finding
+    with `~7001` in the message.
+  - `body.size` is info; no other rule's severity was touched.
+  - `lint-fixtures/good` still yields 0 errors / 0 warnings / 0 infos
+    (confirmed via `cargo run --example lint_demo -- lint-fixtures/good`
+    and the existing `from_collection_over_lint_fixtures_good_has_zero_errors`
+    test).
+  - Deterministic: `cl100k_base()` ranks are `include_str!`'d at compile
+    time (no network/filesystem I/O at runtime); the BPE is built once in a
+    `static BPE: OnceLock<CoreBPE>`, not rebuilt per skill.
+  - `DEC-010` authored; `cargo deny check licenses` reports "licenses ok"
+    for the full resolved dependency graph including `tiktoken-rs`.
+  - No CLI/emitter change; `cargo test` (110 passed), `cargo clippy
+    --all-targets -- -D warnings` (no issues), `cargo fmt --check` (clean)
+    all green.
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - `DEC-010` — `tiktoken-rs` (`cl100k_base`) as the `body.size` token
+    counter
 - **Deviations from spec:**
-  - [list]
+  - None. Used `cl100k_base` (the spec's first-listed option, over
+    `o200k_base`) as the more conservative, longest-track-record encoding;
+    documented as swappable in DEC-010.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - `--target claude` / per-platform verification (already tracked as the
+    next STAGE-003 spec, out of scope here).
+  - A `--max-body-tokens` flag for a configurable threshold, if wanted
+    later (noted as out of scope in this spec too).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing major; the spec's "Notes for the Implementer" section already
+   flagged the exact traps (build the BPE once, pin a real sample, use
+   `encode_ordinary`). The only judgment call was picking `cl100k_base` over
+   `o200k_base` and choosing sample strings — both were explicitly left open
+   by the spec ("cl100k_base or o200k_base"; "a chosen sample").
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No. `no-heuristic-error`, `no-new-top-level-deps-without-decision`, and
+   `license-policy` covered everything needed; DEC-002/003/005 gave the
+   severity and determinism guardrails directly.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Same approach. Running the encoder once locally via a throwaway
+   `examples/pin_test.rs` (removed before commit) to get exact pinned counts
+   for the sample strings and the oversized/boundary bodies was fast and
+   avoided guessing at token counts.
 
 ---
 

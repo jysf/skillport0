@@ -16,6 +16,9 @@ clap = { version = "4", features = ["derive"] }
 # Stable --json output serialization (emitter-local DTOs only). See DEC-008.
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Real BPE tokenizer for the body.size (info) rule's token count. Embeds the
+# cl100k_base ranks (offline, no runtime download). See DEC-010.
+tiktoken-rs = "0.6"
 
 [dev-dependencies]
 # Hermetic temp-tree fixtures for walk() tests only; not a runtime dependency.

@@ -9,8 +9,8 @@
 //! batch). SPEC-006 completes the open-spec layer: `metadata.*`,
 //! `allowed-tools.*`, `body.empty`/`body.lines`, `frontmatter.unknown`, and
 //! `compatibility.type`; it also tightens `name.charset` to strict ASCII.
-//! Only `body.size` (the tokenizer) and `--target` widening remain, both for
-//! STAGE-003.
+//! SPEC-010 completes the open-spec catalog with `body.size` (a real BPE
+//! tokenizer, DEC-010). Only `--target` widening remains, for STAGE-003.
 //!
 //! Two locked design decisions (see the spec's "design decisions" section):
 //!
@@ -27,6 +27,8 @@
 
 use crate::report::{Finding, Severity};
 use crate::skill::{FrontmatterStatus, Skill};
+use std::sync::OnceLock;
+use tiktoken_rs::CoreBPE;
 
 /// The `description.detail` terseness threshold (soft, tunable; info-only so
 /// a false positive is harmless). Ported from the prototype's `< 40` chars.
@@ -34,6 +36,30 @@ const DESCRIPTION_DETAIL_THRESHOLD: usize = 40;
 
 /// `body.lines` recommended ceiling (open spec: move detail into references/).
 const BODY_LINES_THRESHOLD: usize = 500;
+
+/// `body.size` recommended ceiling (open spec: ~5000 tokens; move detail into
+/// references/). Tunable; `>` comparison; info-only (DEC-003) since the count
+/// is a proxy (DEC-010), not an exact count for any specific model.
+const BODY_TOKENS_THRESHOLD: usize = 5000;
+
+/// The process-wide BPE, built once (not per skill) — `deterministic-stable-
+/// output` + DEC-010. `cl100k_base` is a proxy tokenizer (no public Anthropic
+/// tokenizer exists); see DEC-010 for the rationale.
+static BPE: OnceLock<CoreBPE> = OnceLock::new();
+
+fn bpe() -> &'static CoreBPE {
+    BPE.get_or_init(|| {
+        tiktoken_rs::cl100k_base().expect("cl100k_base ranks are embedded at compile time")
+    })
+}
+
+/// Count `text`'s tokens with the real (proxy) BPE tokenizer — NOT a
+/// chars/words heuristic. Counts ordinary/content tokens only
+/// (`encode_ordinary`; no special-token handling needed for a Markdown
+/// body). Deterministic: same input -> same count, every run (DEC-005).
+fn body_token_count(text: &str) -> usize {
+    bpe().encode_ordinary(text).len()
+}
 
 /// Frontmatter fields defined by the open spec (`SPEC_KEYS` in the prototype).
 /// `--target` widening of this set is STAGE-003.
@@ -399,8 +425,19 @@ fn check_body(skill: &Skill, findings: &mut Vec<Finding>) {
         );
     }
 
-    // body.size (the ~5000-token check) is deferred to STAGE-003, which
-    // needs the real tokenizer.
+    let tokens = body_token_count(&skill.body);
+    if tokens > BODY_TOKENS_THRESHOLD {
+        push(
+            findings,
+            "body.size",
+            Severity::Info,
+            format!(
+                "body is ~{tokens} tokens; the spec recommends under {BODY_TOKENS_THRESHOLD} — use progressive disclosure (move detail into references/)"
+            ),
+            skill,
+            None,
+        );
+    }
 }
 
 fn check_unknown_fields(skill: &Skill, findings: &mut Vec<Finding>) {
@@ -987,6 +1024,88 @@ mod tests {
 
         // Neither ever appears as Severity::Error anywhere in this whole suite's
         // scope (spot-checked): confirm by construction above.
+    }
+
+    #[test]
+    fn body_token_count_uses_a_real_tokenizer_not_chars_4() {
+        // Pinned to cl100k_base's actual output (run once locally to get the
+        // number): "tokenization" -> ["token", "ization"], 2 tokens. A
+        // chars/4 heuristic would give 12/4 = 3, a different number — proving
+        // this is the real BPE tokenizer, not a heuristic.
+        let sample = "tokenization";
+        assert_eq!(body_token_count(sample), 2);
+        assert_ne!(body_token_count(sample), sample.chars().count() / 4);
+    }
+
+    #[test]
+    fn short_body_has_no_body_size_finding() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "Some short instructions for the agent.".to_string();
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "body.size"));
+    }
+
+    #[test]
+    fn oversized_body_yields_one_body_size_info_finding_with_count() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        // 700 repeats of a 47-char sentence -> 7001 cl100k_base tokens
+        // (pinned by running the encoder once locally), safely over
+        // BODY_TOKENS_THRESHOLD (5000).
+        skill.body = "The quick brown fox jumps over the lazy dog. ".repeat(700);
+
+        let findings: Vec<Finding> = lint_skill(&skill)
+            .into_iter()
+            .filter(|f| f.rule == "body.size")
+            .collect();
+
+        assert_eq!(findings.len(), 1, "expected exactly one body.size finding");
+        let finding = &findings[0];
+        assert_eq!(finding.severity, Severity::Info);
+        assert!(
+            finding.message.contains("7001"),
+            "message should contain the token count: {}",
+            finding.message
+        );
+    }
+
+    #[test]
+    fn body_just_under_threshold_yields_no_body_size_finding() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        // 499 repeats -> 4991 cl100k_base tokens (pinned), under the 5000
+        // threshold.
+        skill.body = "The quick brown fox jumps over the lazy dog. ".repeat(499);
+
+        let findings = lint_skill(&skill);
+
+        assert!(!has_rule(&findings, "body.size"));
+    }
+
+    #[test]
+    fn body_size_severity_is_info() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "The quick brown fox jumps over the lazy dog. ".repeat(700);
+
+        let findings = lint_skill(&skill);
+
+        let finding = findings.iter().find(|f| f.rule == "body.size");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn body_size_is_the_exact_stable_id() {
+        let fm = valid_frontmatter();
+        let mut skill = make_skill(fm, FrontmatterStatus::Present, None);
+        skill.body = "The quick brown fox jumps over the lazy dog. ".repeat(700);
+
+        let findings = lint_skill(&skill);
+
+        assert!(findings.iter().any(|f| f.rule == "body.size"));
     }
 
     #[test]
