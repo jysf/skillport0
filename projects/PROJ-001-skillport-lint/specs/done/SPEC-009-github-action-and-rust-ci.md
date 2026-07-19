@@ -7,7 +7,7 @@
 task:
   id: SPEC-009
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: medium
   complexity: M                    # S | M | L  (L means split it)
@@ -56,15 +56,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 90733
+      estimated_usd: 0.60
+      duration_minutes: 29
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 65004
+      estimated_usd: 0.43
+      duration_minutes: 44
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (independent review; ran gates + cargo-deny + local command checks; APPROVED, 0 punch-list)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "orchestrator fills real tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 155737
+    estimated_usd: 1.03
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-009: github action and rust ci
@@ -300,16 +317,21 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — The Testability note ("Actions run on GitHub, not locally — don't claim CI
+   passed") kept the build/verify honest: they validated YAML + command-correctness
+   + cargo-deny locally and explicitly did NOT assert a green GitHub run. Good pattern
+   for any infra/CI spec. Also satisfied the long-pending `license-policy` constraint
+   for free (cargo-deny job + deny.toml).
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — `license-policy` (advisory constraint) is now mechanized in CI (cargo-deny +
+   deny.toml) — no longer just documentation. No new signal/decision.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — Two STAGE-003 specs remain: `--target claude` (primary-doc verification, DEC-002)
+   and real-tokenizer `body.size`; plus the README rule-id/severity table + the
+   spec-perfect-skill zero-findings test (the DX/README spec). Also a real `v0`
+   git tag + released binary would make the Action fast (deferred — a release concern).
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:

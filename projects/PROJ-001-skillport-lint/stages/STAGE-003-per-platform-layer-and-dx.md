@@ -106,13 +106,15 @@ doc work, not a rushed add-on.
 - [x] SPEC-008 (shipped 2026-07-18, PR #8) — `--sarif` emitter (SARIF 2.1.0):
   `emit::sarif` + `--sarif` flag (mutually exclusive with `--json`); level map
   info→note; distinct/sorted rules; no new dep. Drops into GitHub code-scanning.
-- [~] SPEC-009 (design) — reusable composite **GitHub Action** (`skillport lint
-  --sarif` + upload to code-scanning) + this repo's **Rust CI** (fmt/clippy/test)
-  + a dogfood job + README "Use in CI". YAML/CI only; no Rust change.
+- [x] SPEC-009 (shipped 2026-07-18, PR #9) — reusable composite **GitHub Action**
+  (`skillport lint --sarif` + upload to code-scanning) + this repo's **Rust CI**
+  (fmt/clippy/test) + dogfood + `licenses` (cargo-deny) jobs + README "Use in CI".
+  Mechanized the `license-policy` constraint. No Rust change.
 - [ ] (not yet written) — README (rule ids/severities/flags) + per-rule tests +
   good/bad fixtures + the zero-findings-on-a-perfect-skill test.
 
-**Count:** 1 shipped / 0 active / 4 pending
+**Count:** 2 shipped / 0 active / 3 pending (remaining: `--target claude`,
+real-tokenizer `body.size`, README rule-id/severity table + fixtures).
 
 ## Design Notes
 
