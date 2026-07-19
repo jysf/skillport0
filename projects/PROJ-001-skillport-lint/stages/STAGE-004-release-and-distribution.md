@@ -125,9 +125,11 @@ stage progresses).
   dtolnay + `cargo install --git` gated to fallback only (no release yet / unsupported
   platform). `--print-plan` dry mode + `version` input (default `latest`). README updated.
   Verify APPROVED, 0 punch-list. Download-success path first exercised at v0.1.0 (SPEC-017).
-- [ ] (not yet written) SPEC-017 — **Cut v0.1.0** (S, release-spec): CHANGELOG + README
-  install matrix + `just next-version`; verify each channel installs. **Human-only**:
-  push the `v0.1.0` tag, trigger publish.
+- [~] SPEC-017 (build) — **Cut v0.1.0** (S): README **Install** matrix (crates.io /
+  prebuilt binaries / Action) + CI & crates.io badges + Status update + Action example
+  pinned `@v0.1.0`; `release.yml` notes → `--generate-notes`; RELEASING.md note. No
+  version bump (first tag at 0.1.0), no app CHANGELOG (root is template-owned). **Human-only:**
+  the `v0.1.0` tag push (fires binaries + publish end-to-end).
 
 **Count:** 4 shipped / 0 active / 1 pending (SPEC-013…016 shipped; SPEC-017 = cut v0.1.0, the last spec — needs the human-only tag push).
 
