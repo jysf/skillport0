@@ -17,6 +17,6 @@ pub mod walk;
 pub use emit::{human, json, sarif};
 pub use parse::parse;
 pub use report::{Finding, Report, Section, Severity, Summary};
-pub use rules::{lint_skill, lint_skill_with_target, Target};
+pub use rules::{all_rule_ids, lint_skill, lint_skill_with_target, RuleDoc, Target, RULES};
 pub use skill::{Frontmatter, FrontmatterStatus, Skill, YamlValue};
 pub use walk::{walk, Collection, CollectionItem};

@@ -336,3 +336,168 @@ fn unreadable_subdir_surfaces_dir_unreadable_warning() {
         "dir.unreadable warning should fail under --strict"
     );
 }
+
+// --- SPEC-012: rule catalog drift/coverage + spec-perfect fixture --------
+
+/// Every rule id found in `lint-fixtures/`'s `--json` output, running once
+/// without `--target` and once with `--target claude` (so the
+/// `allowed-tools.format` Info variant and the Claude-recognized-field
+/// behavior are both exercised).
+fn all_emitted_rule_ids() -> std::collections::BTreeSet<String> {
+    let root = fixture("lint-fixtures");
+    let mut ids = std::collections::BTreeSet::new();
+    for args in [
+        vec![root.to_str().unwrap(), "--json"],
+        vec![root.to_str().unwrap(), "--json", "--target", "claude"],
+    ] {
+        let out = run(&args);
+        let stdout = string(&out.stdout);
+        let value: serde_json::Value = serde_json::from_str(&stdout)
+            .unwrap_or_else(|e| panic!("stdout was not valid JSON ({e}): {stdout}"));
+        let sections = value["sections"].as_array().expect("sections array");
+        for section in sections {
+            let findings = section["findings"].as_array().expect("findings array");
+            for finding in findings {
+                let rule = finding["rule"].as_str().expect("rule string");
+                ids.insert(rule.to_string());
+            }
+        }
+    }
+    ids
+}
+
+#[test]
+fn no_orphan_rule_ids() {
+    // Every rule any fixture emits must be in the catalog (guards against an
+    // id the catalog forgot).
+    let catalog: std::collections::BTreeSet<&str> = skillport::RULES.iter().map(|r| r.id).collect();
+
+    for rule in all_emitted_rule_ids() {
+        assert!(
+            catalog.contains(rule.as_str()),
+            "emitted rule '{rule}' is not in the RULES catalog"
+        );
+    }
+}
+
+#[test]
+fn every_engine_rule_has_a_fixture() {
+    // Every *engine* (non-structural) rule id in the catalog must be emitted
+    // by at least one committed fixture. The 2 structural ids
+    // (file.unreadable/dir.unreadable) are explicitly excused here — they
+    // require a non-UTF-8 file / an unreadable directory, already covered by
+    // `report.rs`'s unit tests, not a `SKILL.md` fixture.
+    let emitted = all_emitted_rule_ids();
+    let engine_ids: Vec<&str> = skillport::RULES
+        .iter()
+        .filter(|r| !r.structural)
+        .map(|r| r.id)
+        .collect();
+
+    let missing: Vec<&&str> = engine_ids
+        .iter()
+        .filter(|id| !emitted.contains(**id))
+        .collect();
+
+    assert!(
+        missing.is_empty(),
+        "engine rule id(s) with no covering fixture in lint-fixtures/: {missing:?}"
+    );
+}
+
+#[test]
+fn spec_perfect_skill_is_clean() {
+    // lint-fixtures/good/data-analysis is the designated spec-perfect
+    // fixture: 0/0/0 both with and without --target claude.
+    let path = fixture("lint-fixtures/good/data-analysis");
+
+    let without_target = run(&[path.to_str().unwrap()]);
+    assert_eq!(without_target.status.code(), Some(0));
+    let stdout = string(&without_target.stdout);
+    assert!(
+        stdout.contains("0 error(s), 0 warning(s), 0 info(s)"),
+        "expected 0/0/0 without --target claude, got: {stdout}"
+    );
+
+    let with_target = run(&[path.to_str().unwrap(), "--target", "claude"]);
+    assert_eq!(with_target.status.code(), Some(0));
+    let stdout = string(&with_target.stdout);
+    assert!(
+        stdout.contains("0 error(s), 0 warning(s), 0 info(s)"),
+        "expected 0/0/0 under --target claude, got: {stdout}"
+    );
+}
+
+#[test]
+fn readme_rule_table_matches_catalog() {
+    // Parse only the `## Rule reference` table region: rows with a
+    // backtick-wrapped rule id in the first column and a severity word
+    // (error/warning/info) in the severity column. Defensive on purpose —
+    // it must not assert on prose (SPEC-012, "Notes for the Implementer").
+    let readme = std::fs::read_to_string(fixture("README.md")).expect("read README.md");
+
+    let start = readme
+        .find("## Rule reference")
+        .expect("README.md must have a '## Rule reference' section");
+    let rest = &readme[start..];
+    let end = rest[3..].find("\n## ").map(|i| i + 3).unwrap_or(rest.len());
+    let section = &rest[..end];
+
+    let mut documented: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
+    for line in section.lines() {
+        if !line.trim_start().starts_with('|') {
+            continue;
+        }
+        // Split a Markdown table row into cells.
+        let cells: Vec<&str> = line.split('|').map(str::trim).collect();
+        if cells.len() < 3 {
+            continue;
+        }
+        let id_cell = cells[1];
+        let severity_cell = cells[2];
+        let Some(id) = extract_backtick_id(id_cell) else {
+            continue;
+        };
+        let severity = ["error", "warning", "info"]
+            .into_iter()
+            .find(|s| severity_cell.to_lowercase().contains(s));
+        let Some(severity) = severity else { continue };
+        documented.insert(id, severity.to_string());
+    }
+
+    let catalog_ids: std::collections::BTreeSet<String> =
+        skillport::RULES.iter().map(|r| r.id.to_string()).collect();
+    let documented_ids: std::collections::BTreeSet<String> = documented.keys().cloned().collect();
+
+    assert_eq!(
+        documented_ids, catalog_ids,
+        "README '## Rule reference' table ids must exactly match the RULES catalog"
+    );
+
+    for rule in skillport::RULES {
+        let expected = rule.severity.label();
+        let got = documented
+            .get(rule.id)
+            .unwrap_or_else(|| panic!("README missing severity for '{}'", rule.id));
+        assert_eq!(
+            got, expected,
+            "README severity for '{}' is '{got}', catalog default is '{expected}'",
+            rule.id
+        );
+    }
+}
+
+/// Pull a `rule.id`-shaped token out of a backtick-wrapped Markdown cell,
+/// e.g. "`` `name.charset` `` -> Some("name.charset")". Returns `None` if the
+/// cell has no backtick-wrapped token.
+fn extract_backtick_id(cell: &str) -> Option<String> {
+    let start = cell.find('`')? + 1;
+    let end = cell[start..].find('`')? + start;
+    let token = &cell[start..end];
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
+    }
+}

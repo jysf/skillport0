@@ -94,7 +94,212 @@ const CLAUDE_KEYS: &[&str] = &[
     "context",
     "hooks",
     "arguments",
+    // SPEC-012: the 5 fields below close the enumeration gap SPEC-011's
+    // verify flagged (each independently doc-verified 2026-07-18 against the
+    // same Frontmatter reference table as the 8 above).
+    // source: code.claude.com/docs/en/skills
+    "when_to_use",
+    // source: code.claude.com/docs/en/skills
+    "argument-hint",
+    // source: code.claude.com/docs/en/skills
+    "agent",
+    // source: code.claude.com/docs/en/skills
+    "paths",
+    // source: code.claude.com/docs/en/skills
+    "shell",
 ];
+
+/// One documented entry in the rule catalog: a stable id, its **default**
+/// emitted severity, and a one-line human summary. `structural` marks the 2
+/// ids `report.rs` emits for unreadable files/dirs rather than a field rule
+/// here — the fixture-coverage test excuses them (they need a non-UTF-8 file
+/// / a permission-denied directory, already covered by `report.rs` unit
+/// tests, not a `SKILL.md` fixture).
+///
+/// `allowed-tools.format`'s `severity` here is its **default** (`Warning`,
+/// i.e. no `--target`); the `--target claude` downgrade to `Info` is real
+/// runtime behavior (see `check_allowed_tools`) but is documented as a note,
+/// not a second catalog entry — SPEC-012, "Notes for the Implementer".
+#[derive(Debug, Clone, Copy)]
+pub struct RuleDoc {
+    pub id: &'static str,
+    pub severity: Severity,
+    pub summary: &'static str,
+    pub structural: bool,
+}
+
+/// SPEC-012: the single, ordered, duplicate-free source of truth for every
+/// rule id the engine (this module) or the structural layer (`report.rs`)
+/// can emit — 24 engine ids + 2 structural ids = 26. The README's
+/// `## Rule reference` table and the `catalog_is_locked` /
+/// `no_orphan_rule_ids` / `every_engine_rule_has_a_fixture` /
+/// `readme_rule_table_matches_catalog` tests all derive from this list
+/// (DEC-005: rule ids are a public contract — adding, removing, or renaming
+/// one must touch this const and its lock test).
+pub const RULES: &[RuleDoc] = &[
+    RuleDoc {
+        id: "frontmatter.missing",
+        severity: Severity::Error,
+        summary: "no YAML frontmatter block",
+        structural: false,
+    },
+    RuleDoc {
+        id: "frontmatter.unclosed",
+        severity: Severity::Error,
+        summary: "opening '---' but no closing '---'",
+        structural: false,
+    },
+    RuleDoc {
+        id: "frontmatter.invalid",
+        severity: Severity::Error,
+        summary: "frontmatter is not a valid YAML mapping",
+        structural: false,
+    },
+    RuleDoc {
+        id: "frontmatter.unknown",
+        severity: Severity::Info,
+        summary: "a key isn't recognized (open set; --target claude also allows Claude's fields)",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.required",
+        severity: Severity::Error,
+        summary: "'name' is missing",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.type",
+        severity: Severity::Error,
+        summary: "'name' is not a string",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.length",
+        severity: Severity::Error,
+        summary: "'name' is not 1-64 characters",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.charset",
+        severity: Severity::Error,
+        summary: "'name' has characters outside [a-z0-9-] (strict ASCII)",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.hyphen-edges",
+        severity: Severity::Error,
+        summary: "'name' starts or ends with '-'",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.hyphen-consecutive",
+        severity: Severity::Error,
+        summary: "'name' contains '--'",
+        structural: false,
+    },
+    RuleDoc {
+        id: "name.dir-match",
+        severity: Severity::Warning,
+        summary: "'name' does not match the skill's directory name",
+        structural: false,
+    },
+    RuleDoc {
+        id: "description.required",
+        severity: Severity::Error,
+        summary: "'description' is missing",
+        structural: false,
+    },
+    RuleDoc {
+        id: "description.type",
+        severity: Severity::Error,
+        summary: "'description' is not a string",
+        structural: false,
+    },
+    RuleDoc {
+        id: "description.length",
+        severity: Severity::Error,
+        summary: "'description' is empty or over 1024 characters",
+        structural: false,
+    },
+    RuleDoc {
+        id: "description.detail",
+        severity: Severity::Info,
+        summary: "'description' is under 40 characters (state what + when)",
+        structural: false,
+    },
+    RuleDoc {
+        id: "compatibility.length",
+        severity: Severity::Error,
+        summary: "'compatibility' is over 500 characters",
+        structural: false,
+    },
+    RuleDoc {
+        id: "compatibility.type",
+        severity: Severity::Warning,
+        summary: "'compatibility' is not a string",
+        structural: false,
+    },
+    RuleDoc {
+        id: "metadata.type",
+        severity: Severity::Warning,
+        summary: "'metadata' is not a key-value map",
+        structural: false,
+    },
+    RuleDoc {
+        id: "metadata.values",
+        severity: Severity::Info,
+        summary: "a 'metadata' value is not a string",
+        structural: false,
+    },
+    RuleDoc {
+        id: "allowed-tools.format",
+        severity: Severity::Warning,
+        summary: "'allowed-tools' is given as a YAML list (default severity; downgrades to Info under --target claude)",
+        structural: false,
+    },
+    RuleDoc {
+        id: "allowed-tools.type",
+        severity: Severity::Warning,
+        summary: "'allowed-tools' is neither a string nor a list",
+        structural: false,
+    },
+    RuleDoc {
+        id: "body.empty",
+        severity: Severity::Warning,
+        summary: "the SKILL.md body is blank",
+        structural: false,
+    },
+    RuleDoc {
+        id: "body.lines",
+        severity: Severity::Warning,
+        summary: "body is over 500 lines",
+        structural: false,
+    },
+    RuleDoc {
+        id: "body.size",
+        severity: Severity::Info,
+        summary: "body is over ~5000 tokens (real cl100k_base tokenizer)",
+        structural: false,
+    },
+    RuleDoc {
+        id: crate::report::FILE_UNREADABLE,
+        severity: Severity::Error,
+        summary: "a SKILL.md couldn't be read (e.g. non-UTF-8) — structural",
+        structural: true,
+    },
+    RuleDoc {
+        id: crate::report::DIR_UNREADABLE,
+        severity: Severity::Warning,
+        summary: "a directory in the tree couldn't be read — structural",
+        structural: true,
+    },
+];
+
+/// The 26 rule ids in catalog order, for callers that just want the id set
+/// (e.g. the drift/coverage tests).
+pub fn all_rule_ids() -> Vec<&'static str> {
+    RULES.iter().map(|r| r.id).collect()
+}
 
 /// Run every implemented open-spec rule over `skill` and return its findings.
 /// Unordered — `Report::from_collection` sorts deterministically. Equivalent
@@ -1342,5 +1547,94 @@ mod tests {
             .sections
             .iter()
             .any(|s| s.findings.iter().any(|f| f.rule == rule))
+    }
+
+    // --- SPEC-012: CLAUDE_KEYS completion + the rule catalog --------------
+
+    #[test]
+    fn claude_keys_complete() {
+        let mut fm = valid_frontmatter();
+        fm.insert("when_to_use".to_string(), str_val("more context"));
+        fm.insert("argument-hint".to_string(), str_val("[file]"));
+        fm.insert("agent".to_string(), str_val("some-agent"));
+        fm.insert("paths".to_string(), str_val("src/**"));
+        fm.insert("shell".to_string(), str_val("bash"));
+        fm.insert("not_a_field".to_string(), str_val("hello"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let with_target = lint_skill_with_target(&skill, Some(Target::Claude));
+        let unknown_with_target: Vec<&Finding> = with_target
+            .iter()
+            .filter(|f| f.rule == "frontmatter.unknown")
+            .collect();
+        assert_eq!(
+            unknown_with_target.len(),
+            1,
+            "expected exactly one frontmatter.unknown (for not_a_field) under --target claude, got: {with_target:?}"
+        );
+        assert_eq!(unknown_with_target[0].field.as_deref(), Some("not_a_field"));
+
+        let without_target = lint_skill_with_target(&skill, None);
+        let unknown_without_target = without_target
+            .iter()
+            .filter(|f| f.rule == "frontmatter.unknown")
+            .count();
+        assert_eq!(
+            unknown_without_target, 6,
+            "expected all 6 fields (5 Claude + 1 genuinely unknown) to fire frontmatter.unknown without a target, got: {without_target:?}"
+        );
+    }
+
+    #[test]
+    fn catalog_is_locked() {
+        // The DEC-005 tripwire: adding/removing/renaming a rule id anywhere
+        // in the engine (this file) or the structural layer (report.rs)
+        // without updating `RULES` fails this test.
+        const EXPECTED: &[&str] = &[
+            "frontmatter.missing",
+            "frontmatter.unclosed",
+            "frontmatter.invalid",
+            "frontmatter.unknown",
+            "name.required",
+            "name.type",
+            "name.length",
+            "name.charset",
+            "name.hyphen-edges",
+            "name.hyphen-consecutive",
+            "name.dir-match",
+            "description.required",
+            "description.type",
+            "description.length",
+            "description.detail",
+            "compatibility.length",
+            "compatibility.type",
+            "metadata.type",
+            "metadata.values",
+            "allowed-tools.format",
+            "allowed-tools.type",
+            "body.empty",
+            "body.lines",
+            "body.size",
+            "file.unreadable",
+            "dir.unreadable",
+        ];
+
+        let ids = all_rule_ids();
+        assert_eq!(ids.len(), 26, "expected exactly 26 rule ids, got: {ids:?}");
+        assert_eq!(ids, EXPECTED);
+
+        let mut sorted = ids.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), ids.len(), "duplicate rule id in RULES");
+
+        let structural_count = RULES.iter().filter(|r| r.structural).count();
+        assert_eq!(structural_count, 2, "expected exactly 2 structural ids");
+        assert!(RULES
+            .iter()
+            .any(|r| r.id == "file.unreadable" && r.structural && r.severity == Severity::Error));
+        assert!(RULES
+            .iter()
+            .any(|r| r.id == "dir.unreadable" && r.structural && r.severity == Severity::Warning));
     }
 }

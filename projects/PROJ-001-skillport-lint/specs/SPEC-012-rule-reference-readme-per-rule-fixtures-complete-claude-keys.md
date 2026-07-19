@@ -390,28 +390,51 @@ SPEC-011 verify flagged.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-012-rule-reference-readme`
+- **PR (if applicable):** not opened by build (orchestrator's job)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - The example output block in the README's usage section now runs on
+    `lint-fixtures/bad/My-Skill` (the single-skill fixture) rather than the
+    whole `lint-fixtures/bad/` directory, because SPEC-012 itself added 10
+    new focused fixtures under `bad/` for rule-coverage — running the example
+    against the whole directory today would dump all 11 skills' findings
+    into the README instead of the small illustrative example the doc had
+    before. Still real, unedited binary output; just a narrower `<path>`.
+  - `RuleDoc`'s two structural entries (`file.unreadable`/`dir.unreadable`)
+    reuse `report.rs`'s `FILE_UNREADABLE`/`DIR_UNREADABLE` consts directly
+    (made `pub(crate)`) rather than re-typing the literal strings in
+    `rules.rs`, so the two files can't drift from each other even though the
+    spec allowed either approach.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none — this was STAGE-003's last spec.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing structural; the catalog table and CLAUDE_KEYS list in
+   "Implementation Context" were transcribed directly, as instructed. The one
+   judgment call was fixture design: the spec listed example fixture ideas
+   but not an exhaustive fixture-per-id plan, so I had to work out which
+   fixtures could safely combine multiple field-level rules (e.g. one
+   `field-type-errors` fixture covering 5 `.type` ids at once, since those
+   checks are independent per-field) versus which needed to stay separate
+   (the three mutually-exclusive `frontmatter.*` statuses).
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No new constraint needed. The existing `deterministic-stable-output`
+   constraint already covered the README example-regeneration requirement
+   cleanly.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — I'd write the fixture-to-rule-id mapping as an explicit table before
+   creating files (which I did informally via `--json` grep against the
+   whole `lint-fixtures/` tree), and go straight to it, since it's a good
+   double-check that's cheap to produce and worth keeping.
 
 ---
 

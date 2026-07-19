@@ -15,11 +15,14 @@ use std::cmp::Reverse;
 use std::path::PathBuf;
 
 /// The stable id for the one structural finding this module emits for an
-/// unreadable file.
-const FILE_UNREADABLE: &str = "file.unreadable";
+/// unreadable file. `pub(crate)` (not `pub`) so `rules.rs`'s catalog can
+/// source it directly rather than re-typing the literal (SPEC-012) — the
+/// catalog itself is the public surface.
+pub(crate) const FILE_UNREADABLE: &str = "file.unreadable";
 /// The stable id for the structural finding emitted for a directory the walk
-/// could not descend into (coverage gap, not a skill violation).
-const DIR_UNREADABLE: &str = "dir.unreadable";
+/// could not descend into (coverage gap, not a skill violation). See
+/// `FILE_UNREADABLE`'s doc comment for why this is `pub(crate)`.
+pub(crate) const DIR_UNREADABLE: &str = "dir.unreadable";
 
 /// A finding's severity. Total order: `Error > Warning > Info` (DEC-003).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
