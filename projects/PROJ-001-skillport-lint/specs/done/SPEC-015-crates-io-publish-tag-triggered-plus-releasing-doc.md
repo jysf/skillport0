@@ -7,7 +7,7 @@
 task:
   id: SPEC-015
   type: story                      # epic | story | task | bug | chore
-  cycle: build  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: S                    # S | M | L  (L means split it)
@@ -58,15 +58,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 69398
+      estimated_usd: 0.46
+      duration_minutes: 5
+      recorded_at: 2026-07-19
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60. duration wall-clock. Added the tag-gated publish job + RELEASING.md; actionlint clean, crate still 404."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 59911
+      estimated_usd: 0.40
+      duration_minutes: 2
+      recorded_at: 2026-07-19
+      notes: "metered Opus verify subagent; traced the tag-only guard (workflow_dispatch can't publish) + the version-match guard, confirmed the token is a secret not a literal, crate still 404. APPROVED, 0 punch-list."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
-      recorded_at: 2026-07-18
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      recorded_at: 2026-07-19
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 129309
+    estimated_usd: 0.86
+    session_count: 4
+shipped_at: 2026-07-19
 ---
 
 # SPEC-015: crates.io publish (tag-triggered) + RELEASING doc
@@ -139,22 +156,22 @@ flow. No runtime code change; nothing is actually published.
 
 ## Acceptance Criteria
 
-- [ ] `release.yml` gains a `publish` job that is **tag-only**
+- [x] `release.yml` gains a `publish` job that is **tag-only**
       (`if: startsWith(github.ref, 'refs/tags/v')`), `needs: [version, build]`, and runs
       `cargo publish --locked` with the token from `${{ secrets.CARGO_REGISTRY_TOKEN }}`
       (never a literal). `actionlint` passes on the whole file.
-- [ ] The `publish` job includes a version-match guard step that **fails** when the tag
+- [x] The `publish` job includes a version-match guard step that **fails** when the tag
       version ≠ the `Cargo.toml` version, and otherwise proceeds.
-- [ ] On `workflow_dispatch` the `publish` job is **skipped** (no publish on a dry run),
+- [x] On `workflow_dispatch` the `publish` job is **skipped** (no publish on a dry run),
       same as the `release` job.
-- [ ] `RELEASING.md` exists at repo root and documents: the `CARGO_REGISTRY_TOKEN` secret
+- [x] `RELEASING.md` exists at repo root and documents: the `CARGO_REGISTRY_TOKEN` secret
       setup, the manual first-publish to establish ownership, the tag-driven per-release
       flow, and the version-match / already-published guardrails. It marks the human-only
       steps.
-- [ ] No third-party publish action; only `checkout` + `dtolnay/rust-toolchain` + cargo.
+- [x] No third-party publish action; only `checkout` + `dtolnay/rust-toolchain` + cargo.
       No `src/`/`Cargo.toml`/`ci.yml`/`action.yml` change; no new dependency; nothing is
       actually published (the crate remains absent from crates.io — API still 404).
-- [ ] Existing gates green (`cargo test`/`clippy`/`fmt`/`cargo publish --dry-run`).
+- [x] Existing gates green (`cargo test`/`clippy`/`fmt`/`cargo publish --dry-run`).
 
 ## Failing Tests
 
@@ -268,22 +285,33 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Nothing material. The `dry-trigger-for-privileged-automation` lesson from SPEC-014
+   paid off again: the publish job reuses the exact tag-ref guard, so a
+   `workflow_dispatch` smoke-test builds binaries but neither creates a Release nor
+   publishes — the whole release pipeline is exercisable without any irreversible action.
+   The version-match guard (fail if tag ≠ Cargo.toml version before `cargo publish`) is a
+   cheap, high-value safety net worth reusing on any publish automation.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. This bumps the `dry-trigger-for-privileged-automation` lesson toward its N=3 bar
+   (now 2 instances: SPEC-014 release, SPEC-015 publish — both privileged-trigger
+   automations given a safe dispatch path). Signal `last_touched` updated; still `watch`,
+   below bar. No AGENTS.md change yet.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — Two STAGE-004 specs remain: SPEC-016 (point `action.yml` at the released binary
+   instead of `cargo install --git`, with a from-source fallback) and SPEC-017 (cut
+   v0.1.0 — CHANGELOG + README install matrix + the human-only `v0.1.0` tag push, which
+   is the first real end-to-end run of the whole release pipeline). SPEC-016 is next.
+   **Human handoff now unblocked:** the user can, whenever ready, set up the
+   `CARGO_REGISTRY_TOKEN` secret and do the first manual `cargo publish` per RELEASING.md
+   — but there's no rush; SPEC-017 is where the tag actually fires everything.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — none
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
    §12 behavioral pre-flight for that surface.)*

@@ -185,11 +185,11 @@ signals:
   - id: dry-trigger-for-privileged-automation
     type: lesson
     summary: "An automation that only fires on a privileged/irreversible trigger (a v* tag, a deploy, a publish) should also expose a safe dry trigger that runs everything EXCEPT the irreversible step, so it's testable before it fires for real."
-    evidence: "N=1 (SPEC-014) — release.yml's true behavior only fires on a human-only v* tag push; adding a workflow_dispatch path that builds/archives/checksums the whole matrix but skips the Release-create step made the build path CI-exercisable and gave verify something real to check."
+    evidence: "N=2 same-outcome. SPEC-014 — release.yml builds/archives/checksums the whole matrix on workflow_dispatch but skips Release-create. SPEC-015 — the crates.io publish job reuses the same tag-ref guard, so a dispatch builds binaries but neither creates a Release nor publishes. Both made a privileged-trigger pipeline exercisable without the irreversible step."
     bar: "N=3 same-outcome"
     status: watch
     disposition_at: stage-close
     first_flagged: 2026-07-18
-    last_touched: 2026-07-18
+    last_touched: 2026-07-19
     raised_by: claude
-    notes: "Below N=3. Watch across STAGE-004's remaining release specs (SPEC-015 publish, SPEC-017 tag-cut) — each is another privileged-trigger automation where the dry-path habit applies. [STAGE-004: recorded at SPEC-014 ship]"
+    notes: "N=2 of 3. One more instance (e.g. SPEC-017's tag-cut, or any future deploy/publish automation) hits the bar → codify at the owning stage close (add to AGENTS.md/spec template: privileged-trigger automations must expose a dry path). [SPEC-014 ship: recorded N=1] [SPEC-015 ship 2026-07-19: N=2, still watch]"
