@@ -7,7 +7,7 @@
 task:
   id: SPEC-010
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: medium
   complexity: M                    # S | M | L  (L means split it)
@@ -61,15 +61,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 120656
+      estimated_usd: 0.80
+      duration_minutes: 31
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 77254
+      estimated_usd: 0.51
+      duration_minutes: 9
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (recomputed the tokenizer pins independently; APPROVED, 0 punch-list)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build cycle; orchestrator fills real tokens_total/duration/estimated_usd at ship from the Agent result's subagent_tokens"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 197910
+    estimated_usd: 1.31
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-010: body size rule via real tokenizer
@@ -306,16 +323,20 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — The tokenizer-pin test (assert a known string's real token count, ≠ chars/4)
+   was the key design move — it makes "is this actually a tokenizer" a mechanical
+   check and guards a silent dep swap. Verify even recomputed it independently. Good
+   pattern for any "we integrated a real X, not a fake" claim.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. DEC-010 records the tokenizer + the proxy rationale (no public Anthropic
+   tokenizer); `license-policy` is enforced by the cargo-deny CI job (passes).
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — The open-spec catalog is now 100% complete. Two STAGE-003 specs remain:
+   `--target claude` (primary-doc verification — the differentiated core), then the
+   README rule-id/severity table + per-rule fixtures + the spec-perfect-skill
+   zero-findings test. Then STAGE-004 (release, DEC-009).
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:

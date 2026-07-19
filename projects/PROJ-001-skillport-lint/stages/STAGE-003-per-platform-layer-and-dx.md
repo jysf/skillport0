@@ -102,9 +102,9 @@ doc work, not a rushed add-on.
 - [ ] (not yet written) — Verify Claude's recognized frontmatter fields from
   docs.claude.com; encode the `--target claude` set with source comments;
   resolve the `allowed-tools.format` downgrade question from the docs.
-- [~] SPEC-010 (design) — Real-tokenizer `body.size` (info): `body_token_count`
-  via `tiktoken-rs` (proxy; DEC-010), threshold ~5000, added to `check_body`.
-  Completes the open-spec catalog (100%).
+- [x] SPEC-010 (shipped 2026-07-18, PR #10) — Real-tokenizer `body.size` (info):
+  `body_token_count` via `tiktoken-rs` cl100k_base (proxy; DEC-010), threshold
+  ~5000, in `check_body`. **Open-spec catalog now 100% implemented.**
 - [x] SPEC-008 (shipped 2026-07-18, PR #8) — `--sarif` emitter (SARIF 2.1.0):
   `emit::sarif` + `--sarif` flag (mutually exclusive with `--json`); level map
   info→note; distinct/sorted rules; no new dep. Drops into GitHub code-scanning.
@@ -115,8 +115,8 @@ doc work, not a rushed add-on.
 - [ ] (not yet written) — README (rule ids/severities/flags) + per-rule tests +
   good/bad fixtures + the zero-findings-on-a-perfect-skill test.
 
-**Count:** 2 shipped / 0 active / 3 pending (remaining: `--target claude`,
-real-tokenizer `body.size`, README rule-id/severity table + fixtures).
+**Count:** 3 shipped / 0 active / 2 pending (remaining: `--target claude`,
+README rule-id/severity table + fixtures + zero-findings-on-a-perfect-skill test).
 
 ## Design Notes
 
