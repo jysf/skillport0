@@ -7,7 +7,7 @@
 task:
   id: SPEC-016
   type: story                      # epic | story | task | bug | chore
-  cycle: build  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -59,15 +59,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 89323
+      estimated_usd: 0.59
+      duration_minutes: 25
+      recorded_at: 2026-07-19
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60. duration wall-clock. scripts/install-release.sh + action.yml prebuilt step + README; shellcheck clean, --print-plan + real fallback verified."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 70399
+      estimated_usd: 0.46
+      duration_minutes: 9
+      recorded_at: 2026-07-19
+      notes: "metered Opus verify subagent; ran shellcheck + all gates + --print-plan for every platform pair + a real fallback run, cross-checked asset naming vs SPEC-014, confirmed the happy path runs no Rust step. APPROVED, 0 punch-list."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-19
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 159722
+    estimated_usd: 1.05
+    session_count: 4
+shipped_at: 2026-07-19
 ---
 
 # SPEC-016: Action downloads the release binary (with source fallback)
@@ -165,24 +182,24 @@ Action's `lint`/SARIF behavior; no `src/`/`Cargo.toml` change.
 
 ## Acceptance Criteria
 
-- [ ] `scripts/install-release.sh` exists and is executable; `shellcheck` clean (or a
+- [x] `scripts/install-release.sh` exists and is executable; `shellcheck` clean (or a
       documented, justified disable). `--print-plan` prints correct
       `triple`/`ext`/`binary`/`url` for each supported `(RUNNER_OS, RUNNER_ARCH)` in the
       table, and reports **unsupported** (→ fallback) for an unknown pair — all without
       network.
-- [ ] The asset URL/name the script builds **exactly matches** SPEC-014's
+- [x] The asset URL/name the script builds **exactly matches** SPEC-014's
       `skillport-<version>-<triple>.<ext>` scheme, and the extract path matches the
       staged-directory layout (`skillport-<ver>-<triple>/<binary>`).
-- [ ] On a host where the release/asset does not exist (the current reality — crate/
+- [x] On a host where the release/asset does not exist (the current reality — crate/
       release absent), the script **signals fallback** (`installed=false`) and exits 0 —
       it does not hard-fail the job.
-- [ ] `action.yml` gains the `version` input, installs via the prebuilt step, and runs
+- [x] `action.yml` gains the `version` input, installs via the prebuilt step, and runs
       the Rust toolchain + `cargo install --git` steps **only** when
       `steps.prebuilt.outputs.installed != 'true'`. `actionlint` passes on `action.yml`.
       The `Run skillport lint` + SARIF steps are unchanged.
-- [ ] README "Use in CI" documents the download-with-fallback behavior + the `version`
+- [x] README "Use in CI" documents the download-with-fallback behavior + the `version`
       input; the stale "v0 builds skillport from source" note is corrected.
-- [ ] No `src/`/`Cargo.toml`/`Cargo.lock`/`ci.yml`/`release.yml` change; no new Cargo
+- [x] No `src/`/`Cargo.toml`/`Cargo.lock`/`ci.yml`/`release.yml` change; no new Cargo
       dependency; existing `cargo test`/`clippy`/`fmt`/`cargo publish --dry-run` gates
       pass; no `--json`/SARIF/exit-code/rule-id change (DEC-005).
 
@@ -317,22 +334,35 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — Extracting the install logic into `scripts/install-release.sh` with a `--print-plan`
+   dry mode was the move that made an otherwise-unverifiable Action (its happy path needs
+   a real release that doesn't exist yet) fully testable now: the platform→asset mapping
+   and URL construction are asserted per-pair with no network, and a real run exercises
+   the fallback. This is the same shape as SPEC-014's `workflow_dispatch` dry path — pull
+   the untestable-in-place logic into a script/flag with a no-side-effect mode.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. The `dry-trigger-for-privileged-automation` lesson (N=2) is adjacent but this is
+   a slightly different flavor (a *dry inspection mode on a script* vs a *dry trigger on a
+   pipeline*); both are instances of "give the untestable-in-place thing a safe
+   observe-only mode." I'm folding this under that lesson's evidence rather than opening a
+   near-duplicate — noted at its next stage-close walk. Also worth remembering: `actionlint`
+   only lints workflow files, not composite `action.yml` — validate a composite action via
+   a throwaway `uses: ./` workflow (both build and verify hit this).
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — One STAGE-004 spec remains: **SPEC-017 (cut v0.1.0)** — version bump (`just
+   next-version`), CHANGELOG, README install matrix, then the **human-only `v0.1.0` tag
+   push** that fires the whole pipeline (binaries + crates.io publish) end-to-end for the
+   first time — which is also the first real exercise of SPEC-014's matrix and SPEC-016's
+   download path. Per the user's steer, I pause before SPEC-017 (it needs their tag push
+   and, ideally, the crates.io token setup first).
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — none
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
    §12 behavioral pre-flight for that surface.)*
