@@ -231,28 +231,34 @@ Static + local checks (no in-repo way to unit-test a workflow; this satisfies
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-015-crates-publish`
+- **PR (if applicable):** none yet (subagent build; not opened per instructions)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - none
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none beyond SPEC-016 (Action swap) and SPEC-017 (version bump/CHANGELOG/tag,
+    which is when RELEASING.md's per-release flow gets exercised for real)
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing; the spec's Notes for the Implementer (version-guard example, `--locked`
+   not `--allow-dirty`, job placement) mapped directly onto the diff with no
+   ambiguity.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — `cargo publish --dry-run` fails on *any* uncommitted working-tree changes
+   (repo-wide git-dirty check, not scoped to packaged files), so the dry-run gate
+   can only go green after this spec's own changes are committed. Worth noting
+   explicitly next time a spec's Failing Tests include `cargo publish --dry-run`.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing material; would do it the same way.
 
 ---
 
