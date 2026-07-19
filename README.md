@@ -228,6 +228,9 @@ is documented separately in [`docs/WORKFLOW.md`](docs/WORKFLOW.md).
 
 ## License
 
-Apache-2.0 (see [`LICENSE`](LICENSE)) — inherited from the template. (The
-prototype declared MIT; the app's final license is a call to confirm before first
-release.)
+Dual-licensed under either of
+
+- [MIT license](LICENSE-MIT)
+- [Apache License, Version 2.0](LICENSE-APACHE)
+
+at your option.

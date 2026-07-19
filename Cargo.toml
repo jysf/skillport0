@@ -5,6 +5,11 @@ edition = "2021"
 description = "Validate and audit agent SKILL.md files (tolerant, lossless parser substrate)."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/jysf/skillport"
+authors = ["jysf <jyashinsky@gmail.com>"]
+readme = "README.md"
+homepage = "https://github.com/jysf/skillport"
+keywords = ["skills", "linter", "agent", "validation", "cli"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 # YAML frontmatter parsing. NOT serde_yaml (deprecated/unmaintained). See DEC-007.

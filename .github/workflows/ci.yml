@@ -40,6 +40,12 @@ jobs:
       - name: cargo test
         run: cargo test
 
+      # Packaging guard (SPEC-013 Phase-0 prep): catches a missing readme
+      # file, bad category slug, or other packaging regression before it
+      # silently breaks `cargo publish` (human-only step, SPEC-015).
+      - name: cargo publish --dry-run (packaging guard)
+        run: cargo publish --dry-run
+
   dogfood:
     name: dogfood (lint our own good fixtures)
     runs-on: ubuntu-latest

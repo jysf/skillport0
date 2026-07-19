@@ -243,28 +243,36 @@ tests are added.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-013-release-prep`
+- **PR (if applicable):** none (build cycle only; orchestrator opens PR later)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - None. Added the optional CI guard (recommended in spec) rather than
+    skipping it — it was a two-line addition to the existing `rust` job in
+    `.github/workflows/ci.yml` (a new `cargo publish --dry-run` step after
+    `cargo test`), well within "keep it small".
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - None new; SPEC-014/015/016 already cover the release workflow, real
+    publish, and Action `cargo install --git` swap per DEC-009.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing; the spec's file list, exact copyright line, and category slugs
+   were precise enough to implement directly without guessing.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — None found; DEC-009 and DEC-005 covered the relevant boundaries
+   (packaging-only, no contract change) completely.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing material; would run `cargo publish --dry-run` once early
+   (with `--allow-dirty`) to catch packaging issues before finishing the
+   README/CI edits, exactly as done here.
 
 ---
 
