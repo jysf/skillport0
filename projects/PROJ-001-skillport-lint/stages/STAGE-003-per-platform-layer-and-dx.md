@@ -99,11 +99,14 @@ doc work, not a rushed add-on.
 > Proposed decomposition — the Design cycle turns these into specs via
 > `just new-spec "<title>" STAGE-003`. Not yet scaffolded.
 
-- [~] SPEC-011 (design) — `--target claude` (first verified per-platform layer,
-  DEC-002): recognized-field widening from **code.claude.com/docs/en/skills** (each
-  fact source-commented) + `allowed-tools.format`→info (Claude accepts a YAML list,
-  confirmed) + `--json` `target:"claude"`. Open-spec rules unchanged. Design did the
-  primary-doc research.
+- [x] SPEC-011 (shipped 2026-07-18, PR #11) — `--target claude` (first verified
+  per-platform layer, DEC-002): recognized-field widening from
+  **code.claude.com/docs/en/skills** (each fact source-commented) +
+  `allowed-tools.format`→info (Claude accepts a YAML list, confirmed) + `--json`
+  `target:"claude"`. Open-spec rules unchanged. Verify APPROVED (0 punch-list);
+  flagged a non-blocking gap — 5 more documented fields (`when_to_use`,
+  `argument-hint`, `agent`, `paths`, `shell`) not yet in `CLAUDE_KEYS`
+  (enumeration-widening follow-up; decide at stage close).
 - [x] SPEC-010 (shipped 2026-07-18, PR #10) — Real-tokenizer `body.size` (info):
   `body_token_count` via `tiktoken-rs` cl100k_base (proxy; DEC-010), threshold
   ~5000, in `check_body`. **Open-spec catalog now 100% implemented.**
@@ -117,8 +120,9 @@ doc work, not a rushed add-on.
 - [ ] (not yet written) — README (rule ids/severities/flags) + per-rule tests +
   good/bad fixtures + the zero-findings-on-a-perfect-skill test.
 
-**Count:** 3 shipped / 0 active / 2 pending (remaining: `--target claude`,
-README rule-id/severity table + fixtures + zero-findings-on-a-perfect-skill test).
+**Count:** 4 shipped / 0 active / 1 pending (remaining: README rule-id/severity
+table + per-rule good/bad fixtures + zero-findings-on-a-perfect-skill test; plus
+an optional `--target claude` enumeration-widening follow-up, decided at stage close).
 
 ## Design Notes
 

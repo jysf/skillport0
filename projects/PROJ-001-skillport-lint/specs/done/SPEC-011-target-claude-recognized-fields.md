@@ -7,7 +7,7 @@
 task:
   id: SPEC-011
   type: story                      # epic | story | task | bug | chore
-  cycle: design                    # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -61,15 +61,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 131670
+      estimated_usd: 0.87
+      duration_minutes: 8
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 98608
+      estimated_usd: 0.65
+      duration_minutes: 7
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent (cross-checked every CLAUDE_KEYS field against the live docs per DEC-002; APPROVED, 0 punch-list, 1 non-blocking enumeration advisory)."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 230278
+    estimated_usd: 1.52
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-011: target claude recognized fields
@@ -157,22 +174,22 @@ cited from primary docs — and label the `--json` output `target: "claude"`.
 
 ## Acceptance Criteria
 
-- [ ] `skillport lint <PATH> --target claude` is accepted; `--target <bogus>` is a
+- [x] `skillport lint <PATH> --target claude` is accepted; `--target <bogus>` is a
       clap usage error (exit 2, stderr, empty stdout). Only `claude` is a valid value.
-- [ ] `pub enum Target { Claude }` + `CLAUDE_KEYS` exist; every Claude field carries
+- [x] `pub enum Target { Claude }` + `CLAUDE_KEYS` exist; every Claude field carries
       a `// source: code.claude.com/docs/en/skills` comment (DEC-002).
-- [ ] With `--target claude`, `frontmatter.unknown` does **not** fire on any of
+- [x] With `--target claude`, `frontmatter.unknown` does **not** fire on any of
       Claude's documented fields, but **still fires** on a genuinely unknown key.
-- [ ] With `--target claude`, an `allowed-tools` **list** yields `allowed-tools.format`
+- [x] With `--target claude`, an `allowed-tools` **list** yields `allowed-tools.format`
       at **info** (not warning); the message notes Claude accepts a list. Without the
       target it stays **warning**.
-- [ ] `allowed-tools.type` and every open-spec rule (name/description/etc.) are
+- [x] `allowed-tools.type` and every open-spec rule (name/description/etc.) are
       **unchanged** by `--target` (DEC-002 — no relaxing open-spec requirements).
-- [ ] The default `lint_skill(skill)` (no target) behaves exactly as before — all
+- [x] The default `lint_skill(skill)` (no target) behaves exactly as before — all
       existing tests pass unchanged.
-- [ ] `--json` shows `"target":"claude"` under `--target claude`, `null` otherwise.
+- [x] `--json` shows `"target":"claude"` under `--target claude`, `null` otherwise.
       SARIF unchanged.
-- [ ] Deterministic; no new dependency; `cargo test`/`clippy`/`fmt` green; the good
+- [x] Deterministic; no new dependency; `cargo test`/`clippy`/`fmt` green; the good
       fixture stays 0/0/0 with and without `--target claude`.
 
 ## Failing Tests
@@ -313,22 +330,36 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — This was the first spec whose facts came from primary docs, and the design
+   under-enumerated `CLAUDE_KEYS`: I pulled the 8 fields I cited in the
+   Verified-facts section but the live Frontmatter reference lists 5 more
+   (`when_to_use`, `argument-hint`, `agent`, `paths`, `shell`). Verify caught it.
+   For any doc-derived enumeration, transcribe the *entire* source table into the
+   spec (then curate down) rather than hand-picking fields while drafting prose —
+   the omission was invisible until an independent read against the live table.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No decision change; DEC-002 held perfectly (every encoded fact was verified,
+   nothing false shipped). Recording the enumeration gap as a `type: lesson`
+   signal `verified-enum-transcribe-whole-table` (N=1) — transcribe the whole
+   primary-doc table before curating. Also the build re-flagged the Behavior-table
+   vs. Failing-Tests prose inconsistency (a design-proofread miss); that's the
+   existing `spec-pin-edge-cases` watch, still N-low.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — Yes — a small `--target claude` enumeration-widening spec to add the 5
+   remaining documented fields to `CLAUDE_KEYS` (same `// source:` discipline), so
+   a real Claude skill using `when_to_use`/`paths`/etc. isn't flagged
+   `frontmatter.unknown`. Fold it into the STAGE-003 close decision (do-now vs.
+   defer) rather than blocking the README/fixtures spec. The next planned spec is
+   still the README rule-id/severity table + per-rule fixtures + the
+   spec-perfect-skill zero-findings test.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — verify
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
    §12 behavioral pre-flight for that surface.)*
