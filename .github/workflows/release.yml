@@ -1,0 +1,188 @@
+name: Release
+
+# SPEC-014 — cross-platform release binaries on a v* tag (DEC-009 step 2).
+#
+# Two triggers:
+#   - `push: tags: v*`      — the real release path: build the matrix, then
+#                              attach the archives to a GitHub Release.
+#   - `workflow_dispatch`   — the CI-testable dry path: builds the same
+#                              matrix and uploads workflow artifacts, but the
+#                              `release` job is skipped (no Release created).
+#
+# DEC-005: the CLI/JSON/exit-code contract is frozen — this workflow only
+# packages the already-built binary; no src/ or Cargo.toml change.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  version:
+    name: derive version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Deterministic version derivation (one step, not hand-typed per leg):
+      # a tag push (`refs/tags/v0.1.0`) strips the leading `v`; any other
+      # trigger (workflow_dispatch) falls back to the Cargo.toml version.
+      - name: Derive version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+          else
+            version="$(awk -F'"' '/^version[[:space:]]*=/ { print $2; exit }' Cargo.toml)"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build (${{ matrix.target }})
+    needs: version
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target: aarch64-apple-darwin
+            ext: tar.gz
+            bin: skillport
+          - runner: macos-14
+            target: x86_64-apple-darwin
+            ext: tar.gz
+            bin: skillport
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: tar.gz
+            bin: skillport
+          - runner: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            ext: tar.gz
+            bin: skillport
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: zip
+            bin: skillport.exe
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # aarch64-unknown-linux-musl is the only true cross-compile in this
+      # matrix (macOS x86_64 builds natively from the arm64 runner with just
+      # the added target; Windows/Linux-gnu are native on their runners).
+      # `cross` (docker-based) supplies both the linker and a matching
+      # `strip` for the musl target without hand-rolling a cross toolchain.
+      - name: Install cross (aarch64-unknown-linux-musl only)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: cargo install cross --locked
+
+      - name: cargo build --release --locked (native)
+        if: matrix.target != 'aarch64-unknown-linux-musl'
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: cross build --release --locked (musl cross-compile)
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        env:
+          # cross's strip for this target can be awkward to invoke directly;
+          # strip at link time instead (still produces a stripped binary,
+          # per the spec's Notes for the Implementer).
+          RUSTFLAGS: -Cstrip=symbols
+        run: cross build --release --locked --target ${{ matrix.target }}
+
+      - name: Strip binary (native targets)
+        if: matrix.target != 'aarch64-unknown-linux-musl' && runner.os != 'Windows'
+        run: strip target/${{ matrix.target }}/release/${{ matrix.bin }}
+
+      - name: Stage archive contents
+        shell: bash
+        run: |
+          stage="skillport-${VERSION}-${{ matrix.target }}"
+          mkdir -p "$stage"
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "$stage/"
+          cp README.md LICENSE-MIT LICENSE-APACHE "$stage/"
+          echo "STAGE_DIR=$stage" >> "$GITHUB_ENV"
+
+      - name: Archive (tar.gz)
+        if: matrix.ext == 'tar.gz'
+        shell: bash
+        run: tar czf "${STAGE_DIR}.tar.gz" "${STAGE_DIR}"
+
+      - name: Archive (zip)
+        if: matrix.ext == 'zip'
+        shell: bash
+        run: |
+          7z a "${STAGE_DIR}.zip" "${STAGE_DIR}" > /dev/null
+
+      - name: Checksum
+        shell: bash
+        run: |
+          archive="${STAGE_DIR}.${{ matrix.ext }}"
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            shasum -a 256 "$archive" > "${archive}.sha256"
+          else
+            sha256sum "$archive" > "${archive}.sha256"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skillport-${{ env.VERSION }}-${{ matrix.target }}
+          path: |
+            ${{ env.STAGE_DIR }}.${{ matrix.ext }}
+            ${{ env.STAGE_DIR }}.${{ matrix.ext }}.sha256
+          if-no-files-found: error
+
+  release:
+    name: publish GitHub Release
+    needs: [version, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten artifact layout
+        run: |
+          mkdir -p release-assets
+          find dist -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.sha256' \) \
+            -exec cp {} release-assets/ \;
+
+      - name: Build provenance file
+        run: ./scripts/build-info.sh > release-assets/build-info.txt
+
+      # Idempotent: `gh release create` on a re-run of the same tag fails
+      # because the release already exists, so fall back to `upload
+      # --clobber` (create-or-update semantics per the spec's Notes).
+      - name: Create or update Release
+        run: |
+          tag="${GITHUB_REF#refs/}"
+          tag="${tag#tags/}"
+          if ! gh release create "$tag" release-assets/* \
+              --title "skillport ${VERSION}" \
+              --notes "skillport ${VERSION} — see build-info.txt for provenance."; then
+            gh release upload "$tag" release-assets/* --clobber
+          fi

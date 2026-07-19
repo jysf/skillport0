@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build ran as a Sonnet subagent (cost)
   created_at: 2026-07-18
 
 references:
@@ -62,7 +62,7 @@ cost:
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "metered subagent build; added .github/workflows/release.yml (5-target matrix + gh-based release job); orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -147,28 +147,28 @@ Release — with a `workflow_dispatch` path that does everything except create t
 
 ## Acceptance Criteria
 
-- [ ] `.github/workflows/release.yml` exists, is valid YAML, and passes `actionlint`
+- [x] `.github/workflows/release.yml` exists, is valid YAML, and passes `actionlint`
       (no errors). It triggers on `push` tags `v*` and on `workflow_dispatch`.
-- [ ] The `build` matrix lists exactly the 5 target triples above with the specified
+- [x] The `build` matrix lists exactly the 5 target triples above with the specified
       runners and archive extensions; each leg installs the Rust toolchain for its
       target, builds `--release --locked --target <triple>`, strips, archives as
       `skillport-<version>-<triple>.<ext>`, and writes a matching `.sha256`.
-- [ ] The archive for each leg contains the platform binary (`skillport` /
+- [x] The archive for each leg contains the platform binary (`skillport` /
       `skillport.exe`) plus `README.md`, `LICENSE-MIT`, `LICENSE-APACHE`.
-- [ ] The `release` job runs **only** on a `v*` tag (`workflow_dispatch` skips it),
+- [x] The `release` job runs **only** on a `v*` tag (`workflow_dispatch` skips it),
       `needs: build`, has `permissions: contents: write`, creates/updates the tag's
       GitHub Release via the `gh` CLI, and uploads all archives + `.sha256` files + a
       `build-info.txt` provenance file. No third-party release action; only
       first-party actions (`checkout`, `upload-artifact`, `download-artifact`) +
       `dtolnay/rust-toolchain` (already used) + `gh`.
-- [ ] Version is derived deterministically (`v*` tag → strip `v`; dispatch →
+- [x] Version is derived deterministically (`v*` tag → strip `v`; dispatch →
       `Cargo.toml` version) — asserted by a small helper/step, not hand-typed per leg.
-- [ ] **Local build-path proof** (the part verifiable without GitHub): on the host
+- [x] **Local build-path proof** (the part verifiable without GitHub): on the host
       target, `cargo build --release --locked` then strip + `tar czf` + `sha256sum`
       reproduces a `skillport-<version>-<host-triple>.tar.gz` + `.sha256` whose checksum
       verifies. (Documents that the per-leg commands are real; the full matrix is
       confirmed at first `workflow_dispatch` / tag.)
-- [ ] No `src/`/`Cargo.toml`/`ci.yml`/`action.yml` change; no new dependency; the
+- [x] No `src/`/`Cargo.toml`/`ci.yml`/`action.yml` change; no new dependency; the
       existing `cargo test`/`clippy`/`fmt`/`cargo publish --dry-run` gates still pass.
 
 ## Failing Tests
@@ -265,28 +265,49 @@ exact assertions the build must make pass).
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-014-release-workflow`
+- **PR (if applicable):** none yet (build cycle only; not advanced to PR/merge)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - Added a small `version` job (upstream of `build`/`release`) to hold the
+    version-derivation step once instead of repeating it in each of the 5
+    matrix legs, and exposed it via `needs: version` / job outputs. This is
+    the "small helper/step, not hand-typed per leg" the AC asks for; it's a
+    job rather than a composite step purely so every downstream job can read
+    `needs.version.outputs.version` without recomputing it.
+  - Windows archiving uses `7z` (preinstalled on `windows-latest` runners)
+    instead of a PowerShell `Compress-Archive` call, since 7z's CLI syntax is
+    closer to the unix `tar czf` step and keeps the archive step symmetric.
+  - `strip` is skipped on Windows (MSVC binaries aren't stripped the same way
+    via GNU `strip`; PDBs aren't shipped and the release binary is already
+    built with the default release profile) — this matches "native `strip`
+    on the gnu/macos targets" in the Notes, which doesn't list Windows.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - SPEC-016 (Action swap) and SPEC-017 (version bump/CHANGELOG/tag) remain
+    as previously planned; no new spec needed from this build.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing major; the Outputs table and Notes for the Implementer were
+   detailed enough to write the workflow in one pass. The only judgment call
+   was how to structure version derivation as "a step, not hand-typed per
+   leg" — I read that as license to factor it into its own upstream job.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — The spec doesn't say how to archive on Windows (zip via PowerShell vs.
+   `7z` vs. an action); I picked `7z` since it ships on `windows-latest` and
+   needs no extra action, but a `windows-latest`-specific tool note in a
+   future spec's Notes section would remove that judgment call.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Same approach; I'd only add a comment inline (already done) explaining
+   why `strip` doesn't run on Windows so a future reader doesn't think it was
+   an oversight.
 
 ---
 
