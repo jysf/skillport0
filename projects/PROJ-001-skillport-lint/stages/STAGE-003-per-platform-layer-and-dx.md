@@ -117,7 +117,7 @@ doc work, not a rushed add-on.
   (`skillport lint --sarif` + upload to code-scanning) + this repo's **Rust CI**
   (fmt/clippy/test) + dogfood + `licenses` (cargo-deny) jobs + README "Use in CI".
   Mechanized the `license-policy` constraint. No Rust change.
-- [~] SPEC-012 (build) — **DX capstone.** A code rule *catalog* (single source of
+- [x] SPEC-012 (shipped 2026-07-18, PR #12) — **DX capstone.** A code rule *catalog* (single source of
   truth over all 26 rule ids) + README refresh (current Status table, a **Rule
   reference** table checked against the catalog by a drift test, `--target`/`--sarif`/
   `--strict` flags, regenerated real example output) + per-rule fixtures + a
@@ -127,10 +127,12 @@ doc work, not a rushed add-on.
   total). No new rules/severities/ids; no new dep. Design did the doc re-verification
   + full severity probe.
 
-**Count:** 4 shipped / 1 active (SPEC-012, build) / 0 pending. SPEC-012 is the last
-STAGE-003 spec — when it ships, close the stage (stage reflection + disposition the
-watch signals). The `--target claude` enumeration follow-up is now folded into
-SPEC-012, so it no longer needs a separate decision at stage close.
+**Count:** 5 shipped / 0 active / 0 pending. **STAGE-003 backlog is COMPLETE** —
+SPEC-008 (`--sarif`), SPEC-009 (GitHub Action + CI), SPEC-010 (tokenizer `body.size`),
+SPEC-011 (`--target claude`), SPEC-012 (rule-reference README + fixtures + complete
+CLAUDE_KEYS) all shipped. Ready to close the stage (Prompt 1c: stage reflection +
+disposition the open watch signals). The `--target claude` enumeration follow-up was
+folded into SPEC-012.
 
 ## Design Notes
 

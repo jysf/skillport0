@@ -7,7 +7,7 @@
 task:
   id: SPEC-012
   type: story                      # epic | story | task | bug | chore
-  cycle: build  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -63,15 +63,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 159737
+      estimated_usd: 1.05
+      duration_minutes: 33
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60 (order-of-magnitude). duration wall-clock."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 114607
+      estimated_usd: 0.76
+      duration_minutes: 8
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent; independently confirmed the README<->catalog drift test is real (not a tautology) and the catalog enumerates every emittable id. APPROVED, 0 punch-list."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 274344
+    estimated_usd: 1.81
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-012: rule reference readme, per-rule fixtures, complete claude keys
@@ -184,31 +201,31 @@ silently drift from the code.
 
 ## Acceptance Criteria
 
-- [ ] `CLAUDE_KEYS` contains the 5 added fields (`when_to_use`, `argument-hint`,
+- [x] `CLAUDE_KEYS` contains the 5 added fields (`when_to_use`, `argument-hint`,
       `agent`, `paths`, `shell`), each with a `// source:` comment. Under
       `--target claude`, a skill using any of them does **not** fire
       `frontmatter.unknown`; without the target it **does**. A genuinely-unknown key
       still fires it under the target.
-- [ ] A public rule catalog exists (`RULES` / `all_rule_ids`) enumerating all
+- [x] A public rule catalog exists (`RULES` / `all_rule_ids`) enumerating all
       **26** rule ids (24 engine + 2 structural), duplicate-free, re-exported from
       `lib.rs`. A test locks its exact contents (adding/removing/renaming a rule id
       without updating the catalog fails the test — DEC-005 tripwire).
-- [ ] **No orphan rule:** every finding any fixture produces has a `rule` present in
+- [x] **No orphan rule:** every finding any fixture produces has a `rule` present in
       the catalog (guards against an id the catalog forgot).
-- [ ] **Full coverage:** every *engine* rule id in the catalog is emitted by at
+- [x] **Full coverage:** every *engine* rule id in the catalog is emitted by at
       least one committed fixture (structural ids explicitly excused, with a comment).
-- [ ] **Spec-perfect → zero findings:** a designated compliant fixture yields
+- [x] **Spec-perfect → zero findings:** a designated compliant fixture yields
       0 errors / 0 warnings / 0 infos, and exit code 0, both with and without
       `--target claude`.
-- [ ] **README drift guard:** a test parses the README **Rule reference** table and
+- [x] **README drift guard:** a test parses the README **Rule reference** table and
       asserts its set of rule ids equals the catalog's set (no documented-but-absent
       id, no emitted-but-undocumented id), and that each documented severity matches
       the catalog's default severity for that id.
-- [ ] README **Status** table shows SPEC-001…011 shipped and no longer says
+- [x] README **Status** table shows SPEC-001…011 shipped and no longer says
       SPEC-006/body/metadata are "next"; the usage section documents `--target
       claude`, `--sarif`, and `--strict`; the example output block matches real
       current binary output.
-- [ ] `cargo test` / `clippy -D warnings` / `fmt --check` green; deterministic; no
+- [x] `cargo test` / `clippy -D warnings` / `fmt --check` green; deterministic; no
       new dependency; the full pre-existing suite still passes unchanged.
 
 ## Failing Tests
@@ -444,22 +461,35 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — The design-time severity probe (reading every `push(...)` site to transcribe the
+   real 26-id catalog into the spec) was the move that made build a transcription
+   rather than a discovery — and it caught my own first-pass errors (a naive
+   grep had mislabeled `body.size`/`description.detail`/`description.required`). For
+   any spec that documents an existing surface, read the emit sites, don't infer from
+   names. The doc-drift *test* (README parsed and compared to a code catalog) is the
+   reusable pattern: turn "keep the docs in sync" from a discipline into a gate.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. This spec operationalizes DEC-005 (rule ids as public contract) via the
+   `catalog_is_locked` tripwire rather than changing any decision. Worth recording a
+   `type: lesson` signal `docs-drift-as-a-test` (N=1): when docs assert a fact about
+   code (a rule table, a flag list), back it with a test that parses the doc and
+   compares to a code source-of-truth, so staleness fails CI instead of shipping.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — Not for STAGE-003 — this was its last spec; the stage is now ready to close
+   (stage reflection + disposition the open watch signals). The next work is STAGE-004
+   (release & distribution, DEC-009): LICENSE-MIT for dual MIT/Apache-2.0, crates.io
+   metadata + name check, GitHub Releases with cross-platform binaries — several steps
+   human-only (cargo publish, tag push). A *possible* later spec (out of scope here,
+   noted in Out of scope): auto-generating the README rule table from the catalog
+   rather than parse-and-compare.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — none
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
    §12 behavioral pre-flight for that surface.)*
