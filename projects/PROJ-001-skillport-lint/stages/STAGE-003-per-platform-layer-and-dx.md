@@ -117,12 +117,20 @@ doc work, not a rushed add-on.
   (`skillport lint --sarif` + upload to code-scanning) + this repo's **Rust CI**
   (fmt/clippy/test) + dogfood + `licenses` (cargo-deny) jobs + README "Use in CI".
   Mechanized the `license-policy` constraint. No Rust change.
-- [ ] (not yet written) — README (rule ids/severities/flags) + per-rule tests +
-  good/bad fixtures + the zero-findings-on-a-perfect-skill test.
+- [~] SPEC-012 (build) — **DX capstone.** A code rule *catalog* (single source of
+  truth over all 26 rule ids) + README refresh (current Status table, a **Rule
+  reference** table checked against the catalog by a drift test, `--target`/`--sarif`/
+  `--strict` flags, regenerated real example output) + per-rule fixtures + a
+  spec-perfect zero-findings fixture/test. Also **folds in** the SPEC-011
+  enumeration follow-up: completes `CLAUDE_KEYS` with the 5 remaining doc-verified
+  Claude fields (`when_to_use`, `argument-hint`, `agent`, `paths`, `shell` → 13
+  total). No new rules/severities/ids; no new dep. Design did the doc re-verification
+  + full severity probe.
 
-**Count:** 4 shipped / 0 active / 1 pending (remaining: README rule-id/severity
-table + per-rule good/bad fixtures + zero-findings-on-a-perfect-skill test; plus
-an optional `--target claude` enumeration-widening follow-up, decided at stage close).
+**Count:** 4 shipped / 1 active (SPEC-012, build) / 0 pending. SPEC-012 is the last
+STAGE-003 spec — when it ships, close the stage (stage reflection + disposition the
+watch signals). The `--target claude` enumeration follow-up is now folded into
+SPEC-012, so it no longer needs a separate decision at stage close.
 
 ## Design Notes
 
