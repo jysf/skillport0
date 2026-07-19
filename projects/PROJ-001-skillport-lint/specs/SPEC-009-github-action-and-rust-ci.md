@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -53,6 +53,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle)"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "orchestrator fills real tokens_total/duration/estimated_usd from the Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -129,29 +137,29 @@ dogfood job that lints the good fixtures — with a documented usage snippet.
 
 ## Acceptance Criteria
 
-- [ ] `action.yml` exists at repo root, is **valid YAML**, and conforms to the
+- [x] `action.yml` exists at repo root, is **valid YAML**, and conforms to the
       composite-action schema (`runs.using: "composite"`, `runs.steps` with
       `shell` on `run` steps, declared `inputs`). It runs `skillport lint` with the
       `path`/`strict` inputs, produces SARIF, and (when `upload-sarif`) uploads via
       `github/codeql-action/upload-sarif`.
-- [ ] The Action's lint step **fails the job** when `skillport lint` returns
+- [x] The Action's lint step **fails the job** when `skillport lint` returns
       non-zero (findings, or warnings under `strict`) — i.e. the exit code is
       propagated, not swallowed (the upload step should still run, e.g. via
       `if: always()`, but the job result reflects the lint exit).
-- [ ] `.github/workflows/ci.yml` keeps the existing `cost-data` job and **adds**
+- [x] `.github/workflows/ci.yml` keeps the existing `cost-data` job and **adds**
       `rust` (fmt-check + clippy `-D warnings` + test) and `dogfood` (lints
       `lint-fixtures/good`, expects exit 0). All jobs are valid YAML and reference
       real, pinned action versions.
-- [ ] The **commands** the workflows run are correct and verified against the local
+- [x] The **commands** the workflows run are correct and verified against the local
       binary: `skillport lint lint-fixtures/good` exits 0; `skillport lint
       lint-fixtures/bad` exits 1; `--sarif` produces valid SARIF (already shipped —
       just confirm the invocation strings match).
-- [ ] `README.md` documents the Action usage (`uses:` snippet) and that findings
+- [x] `README.md` documents the Action usage (`uses:` snippet) and that findings
       surface in code-scanning.
-- [ ] Every YAML file parses; every referenced action is a real action pinned to a
+- [x] Every YAML file parses; every referenced action is a real action pinned to a
       major version; no secret is required beyond the default `GITHUB_TOKEN` (with
       `permissions: security-events: write` for the SARIF upload).
-- [ ] No Rust source change; no new crate dependency; existing `cargo test` still
+- [x] No Rust source change; no new crate dependency; existing `cargo test` still
       green.
 
 ## Failing Tests
@@ -234,28 +242,55 @@ checks**. Prefer a small script and/or notes the verifier can re-run.
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-009-action`
+- **PR (if applicable):** none opened this cycle (build only, per prompt)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - Included the optional `license` job (named `licenses` to match the plural
+    job-name convention already used) using the exact `deny.toml` +
+    `cargo-deny-action@v2` snippet given in `docs/license-policy.md` — it was
+    trivial, so no follow-up needed. Added `deny.toml` at the repo root (a CI
+    config file, not a crate dependency) to back it.
+  - `.github/workflows/example-usage.yml` is `workflow_dispatch`-only rather
+    than wired to `push`/`pull_request`: this repo has no `skills/` directory
+    and `jysf/skillport@v0` is not a tagged release yet, so triggering it
+    automatically would fail this repo's own CI for reasons unrelated to
+    skillport's correctness. It still documents the exact consumer-facing
+    `uses:` shape from the spec, and the README's "Use in CI" snippet is the
+    primary documented usage.
+  - `action.yml`'s lint step interpolates `${{ inputs.strict }}` into a shell
+    `if` rather than passing `--strict` unconditionally, since `strict` is an
+    Action input (string `"true"`/`"false"`), not a shell boolean.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - Swap `cargo install --git ... --locked` in `action.yml` for a released
+    binary / `cargo install skillport` once skillport is published to
+    crates.io (noted inline in `action.yml` and the README) — real speed win,
+    out of scope here per the spec's "Out of scope" section.
+  - Actually tag a `v0` release of this repo so `jysf/skillport@v0` resolves
+    for external consumers (currently only correct once tagged).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing major; the spec's Notes section pre-answered the two likely
+   judgment calls (install strategy, exit-code propagation), so implementation
+   was mostly transcription. The only real judgment call was how to keep
+   `example-usage.yml` from breaking this repo's own CI (see Deviations).
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No — `license-policy` (advisory) and `DEC-005` were both flagged and
+   both directly usable (the license-policy doc even ships a copy-pasteable
+   `deny.toml` + CI job, which made "include if trivial" an easy yes).
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Nothing structural; would just note upfront (as I did here) that a
+   literal "example workflow" file living inside `.github/workflows/` of the
+   *producer* repo needs a non-firing trigger, since it isn't actually
+   runnable in this repo's own context.
 
 ---
 

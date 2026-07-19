@@ -1,9 +1,9 @@
 name: CI
 
-# Language-agnostic spec-driven gates. The cost-capture audit runs on every
-# push/PR (AGENTS.md §4 / docs/cost-tracking.md). Your app's build/test/lint
-# jobs are project-specific — add them here per your stack. A license-policy
-# job is optional and per-language; see docs/license-policy.md to wire one in.
+# Language-agnostic spec-driven gates, plus this project's Rust gates
+# (SPEC-009). The cost-capture audit runs on every push/PR (AGENTS.md §4 /
+# docs/cost-tracking.md). A license-policy job is optional and per-language;
+# see docs/license-policy.md.
 on:
   push:
   pull_request:
@@ -18,3 +18,54 @@ jobs:
 
       - name: cost-audit (shipped specs have build/verify cost; AGENTS §4)
         run: ./scripts/cost-audit.sh
+
+  rust:
+    name: rust gates (fmt / clippy / test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: cargo clippy -D warnings
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test
+
+  dogfood:
+    name: dogfood (lint our own good fixtures)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build
+
+      # Smoke test only: lint-fixtures/good must exit 0. Do NOT lint
+      # lint-fixtures/bad here — it's intentionally full of errors and would
+      # spuriously fail this gating job.
+      - name: skillport lint lint-fixtures/good (expect exit 0)
+        run: ./target/debug/skillport lint lint-fixtures/good
+
+  licenses:
+    name: license policy (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses

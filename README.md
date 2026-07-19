@@ -91,6 +91,38 @@ And `--json` (stable `schema: 1`):
 `cargo run --example lint_demo -- <path>` — also still works if you want to drive
 the library directly.)
 
+## Use in CI
+
+skillport ships a reusable, composite [GitHub Action](action.yml) that runs
+`skillport lint --sarif` and uploads the results to GitHub code-scanning:
+
+```yaml
+permissions:
+  contents: read
+  security-events: write   # required for the SARIF upload
+
+jobs:
+  lint-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jysf/skillport@v0
+        with:
+          path: skills        # default: "."
+          strict: "false"      # treat warnings as failures
+          upload-sarif: "true" # upload to code-scanning
+```
+
+Findings surface as annotations on the PR and in the repo's **Security ›
+Code scanning** tab. The Action needs no secret beyond the default
+`GITHUB_TOKEN`. See [`.github/workflows/example-usage.yml`](.github/workflows/example-usage.yml)
+for a complete example workflow, and this repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+for the `rust` / `dogfood` / `licenses` gates that verify skillport itself.
+
+> v0 builds skillport from source (`cargo install --git`) since it isn't on
+> crates.io yet — expect the first run to take a minute or two. A released
+> binary will make this fast; see `action.yml` for the note.
+
 ## Layout
 
 ```

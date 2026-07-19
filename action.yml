@@ -1,0 +1,52 @@
+name: "skillport lint"
+description: >-
+  Lint agent Skill files (SKILL.md) against the open Agent Skills spec and
+  upload findings to GitHub code-scanning as SARIF.
+author: "jysf"
+
+inputs:
+  path:
+    description: "Path to lint: a single SKILL.md, a skill folder, or a tree."
+    required: false
+    default: "."
+  strict:
+    description: "Treat warnings as failures (affects exit code only)."
+    required: false
+    default: "false"
+  upload-sarif:
+    description: "Upload the SARIF results to GitHub code-scanning."
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Ensure Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    # v0: build from source since skillport isn't published to crates.io yet
+    # (see SPEC-009 Notes). Once a release ships, swap this for downloading a
+    # released binary / `cargo install skillport` — much faster than a
+    # from-source `cargo install --git` on every consumer run.
+    - name: Install skillport
+      shell: bash
+      run: cargo install --git https://github.com/jysf/skillport skillport --locked
+
+    - name: Run skillport lint
+      id: lint
+      shell: bash
+      run: |
+        STRICT_FLAG=""
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          STRICT_FLAG="--strict"
+        fi
+        # Do NOT swallow the exit code: a lint failure (or --strict warning)
+        # must fail this step/job. The SARIF upload below runs regardless
+        # (if: always()) so results still surface in code-scanning.
+        skillport lint "${{ inputs.path }}" $STRICT_FLAG --sarif > skillport.sarif
+
+    - name: Upload SARIF to code-scanning
+      if: ${{ always() && inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: skillport.sarif

@@ -1,0 +1,25 @@
+# Minimal example of consuming the skillport Action from ANOTHER repo. This
+# is illustrative only (mirrors the README "Use in CI" snippet, SPEC-009) —
+# it is intentionally `workflow_dispatch`-only, not wired to push/pull_request,
+# because this repo has no `skills/` directory and `jysf/skillport@v0` is not
+# a tagged release yet (see SPEC-009 "Out of scope": releases are a later
+# concern). It is not part of this repo's own CI gates (see ci.yml).
+name: skillport lint (example usage)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  lint-skills:
+    name: lint skills/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jysf/skillport@v0
+        with:
+          path: skills
