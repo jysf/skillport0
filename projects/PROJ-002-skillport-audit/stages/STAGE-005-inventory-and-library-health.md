@@ -97,11 +97,13 @@ code-complete but pre-release/rename — see the project brief.)
 Proposed decomposition (turned into specs via `just new-spec` as the stage progresses).
 Repo-wide numbering continues from SPEC-017.
 
-- [ ] **SPEC-018 — `audit` command + inventory** *(next)* — add the `audit <path>`
-  subcommand (clap, alongside `lint`); walk the collection; emit a per-skill **inventory**
-  (name / relative path / size / token count) + a summary; a sectioned human report and a
-  stable versioned `--json` audit schema; report semantics (exit 0; usage → 2). Establishes
-  the audit report substrate. Reuses `walk` + tokenizer + emit conventions.
+- [~] **SPEC-018 — `audit` command + inventory** *(build)* — the `audit <path>` subcommand
+  (clap, alongside `lint`); walk → per-skill **inventory** (name / path / **token count**
+  as the headline metric; bytes+lines in `--json`) + summary (skills, tokens_total,
+  unreadable-counted); human report + a **separate** versioned `--json` audit schema
+  (`AUDIT_SCHEMA=1`, distinct from lint's); report semantics (exit 0; usage → 2). Exposes
+  the tokenizer (`token_count`). Establishes the growable `AuditReport` substrate. No `lint`
+  change, no new dep (DEC-003/004/005).
 - [ ] **SPEC-019 — description overlap / collision** *(planned)* — deterministic
   lexical/normalized similarity across skill descriptions; flag exact-normalized dupes and
   high-overlap near-dupes as an audit section. No ML.
