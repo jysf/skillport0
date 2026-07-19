@@ -63,7 +63,7 @@ cost:
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-19
-      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "metered subagent build; leaving null — orchestrator fills tokens_total/duration/estimated_usd from the Agent result's subagent_tokens at ship, per cost-snippet.md"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -148,21 +148,21 @@ real release notes. No version bump, no `src/` change, no tag/publish.
 
 ## Acceptance Criteria
 
-- [ ] README has an **## Install** section covering crates.io (`cargo install
+- [x] README has an **## Install** section covering crates.io (`cargo install
       skillport`), the 5 prebuilt-binary assets (names **exactly**
       `skillport-0.1.0-<triple>.<ext>` matching SPEC-014/016) with checksum-verify +
       extract steps and the macOS-unsigned note, and the Action pinned to `@v0.1.0`.
-- [ ] The README Action example uses `jysf/skillport@v0.1.0` (no remaining bare `@v0` in
+- [x] The README Action example uses `jysf/skillport@v0.1.0` (no remaining bare `@v0` in
       the usage example); the crates.io + CI badges are present and well-formed.
-- [ ] README Status no longer says "not yet released"/"feature-complete for STAGE-003";
+- [x] README Status no longer says "not yet released"/"feature-complete for STAGE-003";
       it reflects v0.1.0 + the SPEC-001…016 shipped set. The rule-reference /
       drift-guard test from SPEC-012 still passes (README rule table unchanged/consistent).
-- [ ] `release.yml` uses `--generate-notes` (not the placeholder `--notes` string);
+- [x] `release.yml` uses `--generate-notes` (not the placeholder `--notes` string);
       `actionlint` passes; the tag-guard/version-match/publish jobs are otherwise
       unchanged. `git diff` on `release.yml` is limited to the notes flag.
-- [ ] `Cargo.toml` version is still `0.1.0` (unchanged); no app `CHANGELOG.md` created;
+- [x] `Cargo.toml` version is still `0.1.0` (unchanged); no app `CHANGELOG.md` created;
       `RELEASING.md` notes the auto-notes + version-match/no-bump behavior.
-- [ ] No `src/`/`Cargo.toml`/`Cargo.lock`/`ci.yml`/`action.yml`/`scripts/` change; no new
+- [x] No `src/`/`Cargo.toml`/`Cargo.lock`/`ci.yml`/`action.yml`/`scripts/` change; no new
       dependency; `cargo test`/`clippy`/`fmt`/`cargo publish --dry-run` all pass; no
       `--json`/SARIF/exit-code/rule-id change (DEC-005). Nothing is tagged or published.
 
@@ -244,28 +244,44 @@ Docs + a one-line workflow change → static/consistency checks (satisfies
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-017-cut-v0-1-0`
+- **PR (if applicable):** none yet (orchestrator opens it)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - `cargo publish --dry-run` required `--allow-dirty` to run against the
+    uncommitted working tree (the spec's gate list names the command without
+    the flag); ran it with `--allow-dirty` before committing, which is the
+    only way to dry-run-verify uncommitted doc changes. No packaging content
+    changed by this — the flag only suppresses the "commit first" check.
+  - Added two extra Status-table rows (SPEC-013/014/015/016 shipped; "Install
+    matrix + release notes (this cut)" for SPEC-017 itself) beyond the literal
+    "keep the per-SPEC table accurate" instruction, to keep the table a
+    complete SPEC-001…017 ledger rather than stopping at SPEC-012.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none — this was the last spec of STAGE-004/PROJ-001's lint arc; `audit`
+    (PROJ-002) is the next project, not a follow-up spec here.
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing significant; the spec's asset-name/triple table and the
+   pointer to `scripts/install-release.sh` as the authoritative map made the
+   Install section a direct transcription task, not a design decision.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — The `cargo publish --dry-run` gate implicitly assumes a clean git tree
+   (cargo's packaging step checks git status); worth noting in the spec or
+   `cost-snippet.md`-style shared notes that `--allow-dirty` is expected/fine
+   for a dry-run performed before the commit that lands the changes.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Same approach; would run `cargo publish --dry-run --allow-dirty` first
+   (before the other gates) since it's the slowest step, to fail fast on
+   packaging issues before spending time on fmt/clippy/test.
 
 ---
 

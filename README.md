@@ -1,5 +1,8 @@
 # skillport
 
+[![CI](https://github.com/jysf/skillport/actions/workflows/ci.yml/badge.svg)](https://github.com/jysf/skillport/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/skillport.svg)](https://crates.io/crates/skillport)
+
 **A fast Rust tool that validates and audits agent Skills (`SKILL.md` files).**
 
 skillport answers two questions about agent skills:
@@ -19,10 +22,57 @@ converter (that lane is already crowded; see [`decisions/DEC-001`](decisions/DEC
 Only the open spec is authoritative; per-platform constraints are advisory until
 confirmed from that platform's primary docs ([`decisions/DEC-002`](decisions/DEC-002-open-spec-authoritative.md)).
 
+## Install
+
+skillport is released as **v0.1.0** — the `lint` command is feature-complete
+and ships via crates.io, prebuilt binaries, and a GitHub Action.
+
+### crates.io
+
+```bash
+cargo install skillport
+```
+
+### Prebuilt binaries
+
+Download the archive for your platform from the
+[v0.1.0 release](https://github.com/jysf/skillport/releases/tag/v0.1.0),
+verify its checksum, and extract:
+
+| Platform | Asset |
+|---|---|
+| macOS arm64 (Apple Silicon) | `skillport-0.1.0-aarch64-apple-darwin.tar.gz` |
+| macOS x86_64 (Intel) | `skillport-0.1.0-x86_64-apple-darwin.tar.gz` |
+| Linux x86_64 | `skillport-0.1.0-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux arm64 (musl) | `skillport-0.1.0-aarch64-unknown-linux-musl.tar.gz` |
+| Windows x86_64 | `skillport-0.1.0-x86_64-pc-windows-msvc.zip` |
+
+Example (Linux x86_64 — swap the asset name for your platform, using
+`shasum -a 256 -c` in place of `sha256sum -c` on macOS, and `unzip` in place
+of `tar` for the Windows `.zip`):
+
+```bash
+curl -LO https://github.com/jysf/skillport/releases/download/v0.1.0/skillport-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+curl -LO https://github.com/jysf/skillport/releases/download/v0.1.0/skillport-0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256
+sha256sum -c skillport-0.1.0-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar xzf skillport-0.1.0-x86_64-unknown-linux-gnu.tar.gz
+# binary is at skillport-0.1.0-x86_64-unknown-linux-gnu/skillport
+./skillport-0.1.0-x86_64-unknown-linux-gnu/skillport --help
+```
+
+> **macOS note:** the binaries are **unsigned** until an Apple Developer key
+> is available (`decisions/DEC-009`). Gatekeeper will block the first run —
+> either right-click the binary → Open, or clear the quarantine attribute:
+> `xattr -d com.apple.quarantine skillport-0.1.0-<triple>/skillport`.
+
+### GitHub Action
+
+See [Use in CI](#use-in-ci) below — `uses: jysf/skillport@v0.1.0`.
+
 ## Status
 
-skillport's `lint` command is **feature-complete for STAGE-003** and not yet
-released as a binary.
+skillport's `lint` command is **released as v0.1.0**, the first release of
+the tool (SPEC-001…016 shipped).
 
 | Piece | State |
 |---|---|
@@ -36,6 +86,8 @@ released as a binary.
 | `--sarif` output (GitHub code-scanning) | ✅ shipped (SPEC-008) |
 | `--target claude` (Claude Code frontmatter awareness) | ✅ shipped (SPEC-011) |
 | `body.size` via a real tokenizer + rule reference docs | ✅ shipped (SPEC-010/SPEC-012) |
+| crates.io metadata / release binaries / crates.io publish / the Action | ✅ shipped (SPEC-013/014/015/016) |
+| Install matrix + release notes (this cut) | ✅ shipped (SPEC-017) |
 | `audit` command | ⏳ PROJ-002 |
 
 `skillport lint` **runs today** and enforces the full open-spec rule catalog
@@ -178,7 +230,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jysf/skillport@v0
+      - uses: jysf/skillport@v0.1.0
         with:
           path: skills        # default: "."
           strict: "false"      # treat warnings as failures

@@ -183,7 +183,7 @@ jobs:
           tag="${tag#tags/}"
           if ! gh release create "$tag" release-assets/* \
               --title "skillport ${VERSION}" \
-              --notes "skillport ${VERSION} — see build-info.txt for provenance."; then
+              --generate-notes; then
             gh release upload "$tag" release-assets/* --clobber
           fi
 

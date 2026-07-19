@@ -72,3 +72,9 @@ Repeat this for every release after the first.
 - **The token gates the job, not a workflow check.** If
   `CARGO_REGISTRY_TOKEN` is unset, the `publish` job fails at the
   `cargo publish` step — that's expected until one-time setup (§1) is done.
+- **Release notes are auto-generated** (`gh release create --generate-notes`,
+  SPEC-017) from merged PRs since the last tag (the full history for the
+  first tag) — no hand-written `--notes` string. A release is always cut at
+  whatever version `Cargo.toml` currently holds; bump `Cargo.toml` (§2.1,
+  `just next-version`) *before* pushing the next tag, since the version-match
+  guard (above) enforces tag == `Cargo.toml`.
