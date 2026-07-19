@@ -72,9 +72,43 @@ const SPEC_KEYS: &[&str] = &[
     "allowed-tools",
 ];
 
+/// A lint target: a specific agent platform whose recognized-field/behavior
+/// facts have been verified from that platform's primary docs (DEC-002). Only
+/// `Claude` is verified so far — no Cursor/Codex/Vercel variant exists yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    Claude,
+}
+
+// source: code.claude.com/docs/en/skills
+//
+// Claude Code's recognized SKILL.md frontmatter fields, beyond the open-spec
+// `SPEC_KEYS` ("Extend Claude with skills", Frontmatter reference; verified
+// 2026-07-18). Only fields NOT already in `SPEC_KEYS` are listed here.
+const CLAUDE_KEYS: &[&str] = &[
+    "disable-model-invocation",
+    "user-invocable",
+    "disallowed-tools",
+    "model",
+    "effort",
+    "context",
+    "hooks",
+    "arguments",
+];
+
 /// Run every implemented open-spec rule over `skill` and return its findings.
-/// Unordered — `Report::from_collection` sorts deterministically.
+/// Unordered — `Report::from_collection` sorts deterministically. Equivalent
+/// to `lint_skill_with_target(skill, None)`: behavior is the open spec only,
+/// unchanged by `--target` widening.
 pub fn lint_skill(skill: &Skill) -> Vec<Finding> {
+    lint_skill_with_target(skill, None)
+}
+
+/// Run every implemented rule over `skill` and return its findings, widened
+/// by `target` (STAGE-003, DEC-002): with `Some(Target::Claude)`,
+/// `frontmatter.unknown` also recognizes `CLAUDE_KEYS` and `allowed-tools.format`
+/// (list case) downgrades to `Info`. Every other rule is unchanged by `target`.
+pub fn lint_skill_with_target(skill: &Skill, target: Option<Target>) -> Vec<Finding> {
     let mut findings = Vec::new();
 
     match &skill.frontmatter_status {
@@ -118,9 +152,9 @@ pub fn lint_skill(skill: &Skill) -> Vec<Finding> {
     check_description(skill, &mut findings);
     check_compatibility(skill, &mut findings);
     check_metadata(skill, &mut findings);
-    check_allowed_tools(skill, &mut findings);
+    check_allowed_tools(skill, &mut findings, target);
     check_body(skill, &mut findings);
-    check_unknown_fields(skill, &mut findings);
+    check_unknown_fields(skill, &mut findings, target);
 
     findings
 }
@@ -371,20 +405,32 @@ fn check_metadata(skill: &Skill, findings: &mut Vec<Finding>) {
     }
 }
 
-fn check_allowed_tools(skill: &Skill, findings: &mut Vec<Finding>) {
+fn check_allowed_tools(skill: &Skill, findings: &mut Vec<Finding>, target: Option<Target>) {
     if let Some(value) = skill.get("allowed-tools") {
         if value.is_sequence() {
             // Open spec defines `allowed-tools` as a space-separated string,
-            // not a list. The info-where-a-platform-accepts-a-list downgrade
-            // is STAGE-003 via `--target`.
-            push(
-                findings,
-                "allowed-tools.format",
-                Severity::Warning,
-                "the open spec defines 'allowed-tools' as a space-separated string, not a list",
-                skill,
-                Some("allowed-tools"),
-            );
+            // not a list. Under `--target claude`, this downgrades to Info:
+            // source: code.claude.com/docs/en/skills — "Accepts a space- or
+            // comma-separated string, or a YAML list."
+            if target == Some(Target::Claude) {
+                push(
+                    findings,
+                    "allowed-tools.format",
+                    Severity::Info,
+                    "'allowed-tools' is a list; the open spec expects a space-separated string, but Claude Code accepts a list (source: code.claude.com/docs/en/skills)",
+                    skill,
+                    Some("allowed-tools"),
+                );
+            } else {
+                push(
+                    findings,
+                    "allowed-tools.format",
+                    Severity::Warning,
+                    "the open spec defines 'allowed-tools' as a space-separated string, not a list",
+                    skill,
+                    Some("allowed-tools"),
+                );
+            }
         } else if !value.is_string() {
             push(
                 findings,
@@ -440,12 +486,14 @@ fn check_body(skill: &Skill, findings: &mut Vec<Finding>) {
     }
 }
 
-fn check_unknown_fields(skill: &Skill, findings: &mut Vec<Finding>) {
+fn check_unknown_fields(skill: &Skill, findings: &mut Vec<Finding>, target: Option<Target>) {
     // Order-preserving iteration (the frontmatter is an `IndexMap`, not a
     // `HashMap`) for deterministic output, per constraint
     // `deterministic-stable-output`.
     for key in skill.keys() {
-        if !SPEC_KEYS.iter().any(|k| k == key) {
+        let recognized = SPEC_KEYS.iter().any(|k| k == key)
+            || (target == Some(Target::Claude) && CLAUDE_KEYS.iter().any(|k| k == key));
+        if !recognized {
             push(
                 findings,
                 "frontmatter.unknown",
@@ -1120,5 +1168,179 @@ mod tests {
             "expected zero errors linting lint-fixtures/good, got: {:#?}",
             report.sections
         );
+    }
+
+    // --- SPEC-011: --target claude ---------------------------------------
+
+    #[test]
+    fn target_claude_a_claude_field_does_not_trigger_frontmatter_unknown() {
+        let mut fm = valid_frontmatter();
+        fm.insert("context".to_string(), str_val("fork"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+
+        assert!(!has_rule(&findings, "frontmatter.unknown"));
+    }
+
+    #[test]
+    fn no_target_context_does_trigger_frontmatter_unknown_info() {
+        let mut fm = valid_frontmatter();
+        fm.insert("context".to_string(), str_val("fork"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, None);
+
+        let finding = findings.iter().find(|f| f.rule == "frontmatter.unknown");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn target_claude_a_truly_unknown_key_still_triggers_frontmatter_unknown() {
+        let mut fm = valid_frontmatter();
+        fm.insert("random_field".to_string(), str_val("hello"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+
+        let finding = findings.iter().find(|f| f.rule == "frontmatter.unknown");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn target_claude_allowed_tools_list_is_allowed_tools_format_info() {
+        let mut fm = valid_frontmatter();
+        fm.insert(
+            "allowed-tools".to_string(),
+            YamlValue::Sequence(vec![str_val("Bash"), str_val("Read")]),
+        );
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.format");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+    }
+
+    #[test]
+    fn no_target_allowed_tools_list_is_allowed_tools_format_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert(
+            "allowed-tools".to_string(),
+            YamlValue::Sequence(vec![str_val("Bash"), str_val("Read")]),
+        );
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, None);
+
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.format");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn target_claude_allowed_tools_type_number_still_warning() {
+        let mut fm = valid_frontmatter();
+        fm.insert("allowed-tools".to_string(), YamlValue::Number(1.into()));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.type");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn target_claude_does_not_relax_name_required_or_description_length() {
+        // name.required still fires when name is absent.
+        let mut fm = valid_frontmatter();
+        fm.shift_remove("name");
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+        assert!(has_rule(&findings, "name.required"));
+
+        // description.length still fires when description is too long.
+        let mut fm = valid_frontmatter();
+        fm.insert("description".to_string(), str_val(&"a".repeat(1025)));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+        let findings = lint_skill_with_target(&skill, Some(Target::Claude));
+        assert!(has_rule(&findings, "description.length"));
+    }
+
+    #[test]
+    fn lint_skill_no_target_is_unchanged() {
+        // A Claude field -> still frontmatter.unknown info.
+        let mut fm = valid_frontmatter();
+        fm.insert("context".to_string(), str_val("fork"));
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+        let findings = lint_skill(&skill);
+        let finding = findings.iter().find(|f| f.rule == "frontmatter.unknown");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Info));
+
+        // A list -> still allowed-tools.format warning.
+        let mut fm = valid_frontmatter();
+        fm.insert(
+            "allowed-tools".to_string(),
+            YamlValue::Sequence(vec![str_val("Bash")]),
+        );
+        let skill = make_skill(fm, FrontmatterStatus::Present, None);
+        let findings = lint_skill(&skill);
+        let finding = findings.iter().find(|f| f.rule == "allowed-tools.format");
+        assert_eq!(finding.map(|f| f.severity), Some(Severity::Warning));
+    }
+
+    #[test]
+    fn from_collection_over_lint_fixtures_good_claude_is_clean_with_target() {
+        // "Clean" = 0 errors, 0 warnings (exit code 0). The Behavior-table
+        // (the spec's authoritative row) has `allowed-tools.format` downgrade
+        // to Info under `--target claude`, not disappear — so a fixture using
+        // `allowed-tools:` as a list still carries exactly that one Info
+        // finding under the target. See Build Completion "Deviations" for the
+        // literal "0/0/0" vs. this reconciliation.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("lint-fixtures/good-claude");
+
+        let collection = walk(&root);
+        let report = Report::from_collection(&collection, |s| {
+            lint_skill_with_target(s, Some(Target::Claude))
+        });
+
+        assert_eq!(report.summary.errors, 0);
+        assert_eq!(report.summary.warnings, 0);
+        assert_eq!(
+            report.exit_code(false),
+            0,
+            "expected exit code 0 under --target claude, got: {:#?}",
+            report.sections
+        );
+        assert!(
+            !has_rule_anywhere(&report, "frontmatter.unknown"),
+            "expected no frontmatter.unknown under --target claude, got: {:#?}",
+            report.sections
+        );
+    }
+
+    #[test]
+    fn from_collection_over_lint_fixtures_good_claude_without_target_has_findings() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("lint-fixtures/good-claude");
+
+        let collection = walk(&root);
+        let report = Report::from_collection(&collection, lint_skill);
+
+        assert!(
+            has_rule_anywhere(&report, "frontmatter.unknown"),
+            "expected frontmatter.unknown without --target claude, got: {:#?}",
+            report.sections
+        );
+        assert!(
+            has_rule_anywhere(&report, "allowed-tools.format"),
+            "expected allowed-tools.format without --target claude, got: {:#?}",
+            report.sections
+        );
+    }
+
+    fn has_rule_anywhere(report: &Report, rule: &str) -> bool {
+        report
+            .sections
+            .iter()
+            .any(|s| s.findings.iter().any(|f| f.rule == rule))
     }
 }

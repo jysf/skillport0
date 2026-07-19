@@ -20,7 +20,7 @@ repo:
 
 agents:
   architect: claude-opus-4-8      # design cycle (this orchestrator session)
-  implementer: claude-sonnet-4-6  # build runs as a Sonnet subagent (cost); updated with the real model
+  implementer: claude-sonnet-5    # build runs as a Sonnet subagent (cost); updated with the real model
   created_at: 2026-07-18
 
 references:
@@ -58,6 +58,14 @@ cost:
       duration_minutes: null
       recorded_at: 2026-07-18
       notes: "main-loop, not separately metered (design cycle); includes primary-doc research (WebFetch code.claude.com) per DEC-002"
+    - cycle: build
+      agent: claude-sonnet-5
+      interface: claude-code
+      tokens_total: null
+      estimated_usd: null
+      duration_minutes: null
+      recorded_at: 2026-07-18
+      notes: "metered subagent build; orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
   totals:
     tokens_total: 0
     estimated_usd: 0
@@ -249,28 +257,53 @@ Written now (design).
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-011-target-claude`
+- **PR (if applicable):** none (build cycle only, per instructions)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - The Failing-Tests fixture note says `lint-fixtures/good-claude` should be
+    "clean under `--target claude` (0/0/0)". That's inconsistent with the
+    spec's own (explicitly "exact") Behavior table, which has
+    `allowed-tools.format` on a list **downgrade to Info under
+    `--target claude`, not disappear**. A fixture using `allowed-tools:` as a
+    list therefore always carries that one Info finding under the target —
+    it cannot be literally 0/0/0. I followed the Behavior table (the more
+    authoritative, explicitly-"exact" source) and treated "clean" as
+    0 errors/0 warnings/exit-code-0, which also matches the AC bullet
+    ("an `allowed-tools` list yields `allowed-tools.format` at info (not
+    warning)" — info firing is required, not its absence). Tests assert
+    0 errors, 0 warnings, exit code 0, and no `frontmatter.unknown` under the
+    target; a separate test confirms the same fixture without `--target
+    claude` produces both `frontmatter.unknown` and `allowed-tools.format`
+    (warning).
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - None beyond the spec's own "Out of scope" (Cursor/Codex/Vercel targets,
+    README table, SARIF `target` field — future specs per DEC-002 discipline).
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — The literal "clean under `--target claude` (0/0/0)" fixture note
+   directly contradicts the spec's own "exact" Behavior table (list →
+   Info, not removed). I resolved it in favor of the Behavior table and
+   documented the reasoning above; a design-cycle proofread that cross-checks
+   prose claims against the behavior table would have caught this before
+   build.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No new constraint needed; `only-verified-constraints-are-firm` and
+   `no-heuristic-error` already covered the actual implementation choices
+   (info vs. warning, recognized-field widening). The only gap was the
+   internal-consistency issue above, which isn't a constraints problem.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Diff every prose example/note in "Failing Tests" against the Behavior
+   table line by line before writing the fixture, rather than after hitting
+   a failing assertion.
 
 ---
 
