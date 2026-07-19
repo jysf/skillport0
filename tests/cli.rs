@@ -187,6 +187,108 @@ fn string(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
+// --- SPEC-011: --target claude ------------------------------------------
+
+#[test]
+fn lint_target_claude_on_claude_fields_fixture_is_clean() {
+    // "Clean" = 0 errors, no frontmatter.unknown for the Claude fields
+    // (`context`). `allowed-tools.format` still fires as info (Behavior
+    // table: list downgrades warning -> info, it does not disappear).
+    let out = run(&[
+        fixture("lint-fixtures/good-claude").to_str().unwrap(),
+        "--target",
+        "claude",
+    ]);
+
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "stderr: {:?}",
+        string(&out.stderr)
+    );
+    let stdout = string(&out.stdout);
+    assert!(
+        !stdout.contains("frontmatter.unknown"),
+        "expected no frontmatter.unknown for Claude fields, got: {stdout}"
+    );
+    assert!(
+        stdout.contains("info") && stdout.contains("allowed-tools.format"),
+        "expected allowed-tools.format at info under --target claude, got: {stdout}"
+    );
+}
+
+#[test]
+fn lint_good_claude_fixture_without_target_has_findings() {
+    let out = run(&[fixture("lint-fixtures/good-claude").to_str().unwrap()]);
+
+    let stdout = string(&out.stdout);
+    assert!(
+        stdout.contains("frontmatter.unknown"),
+        "expected frontmatter.unknown without --target claude, got: {stdout}"
+    );
+    assert!(
+        stdout.contains("allowed-tools.format"),
+        "expected allowed-tools.format without --target claude, got: {stdout}"
+    );
+}
+
+#[test]
+fn lint_target_bogus_exits_2() {
+    let out = run(&[
+        fixture("lint-fixtures/good").to_str().unwrap(),
+        "--target",
+        "bogus",
+    ]);
+
+    assert_eq!(out.status.code(), Some(2));
+    assert!(
+        out.stdout.is_empty(),
+        "expected empty stdout, got: {:?}",
+        string(&out.stdout)
+    );
+    assert!(
+        !out.stderr.is_empty(),
+        "expected a clap usage-error message on stderr"
+    );
+}
+
+#[test]
+fn lint_target_claude_json_has_target_claude_label() {
+    let out = run(&[
+        fixture("lint-fixtures/good-claude").to_str().unwrap(),
+        "--target",
+        "claude",
+        "--json",
+    ]);
+
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "stderr: {:?}",
+        string(&out.stderr)
+    );
+    let stdout = string(&out.stdout);
+    let value: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout was not valid JSON ({e}): {stdout}"));
+    assert_eq!(value["target"], "claude");
+}
+
+#[test]
+fn lint_json_without_target_has_null_target_label() {
+    let out = run(&[fixture("lint-fixtures/good").to_str().unwrap(), "--json"]);
+
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "stderr: {:?}",
+        string(&out.stderr)
+    );
+    let stdout = string(&out.stdout);
+    let value: serde_json::Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|e| panic!("stdout was not valid JSON ({e}): {stdout}"));
+    assert_eq!(value["target"], serde_json::Value::Null);
+}
+
 #[cfg(unix)]
 #[test]
 fn unreadable_subdir_surfaces_dir_unreadable_warning() {

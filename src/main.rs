@@ -11,7 +11,7 @@
 //! added later without reshaping `Lint` (DEC-001: lint only, no
 //! convert/push/profiles here).
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use skillport::{emit, walk, Report};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -42,7 +42,37 @@ enum Commands {
         /// Treat warnings as failures (affects exit code only).
         #[arg(long)]
         strict: bool,
+        /// Widen recognized fields/behavior for a specific agent platform,
+        /// verified from that platform's primary docs (DEC-002). Only
+        /// `claude` is verified so far.
+        #[arg(long, value_enum)]
+        target: Option<TargetArg>,
     },
+}
+
+/// The clap-facing `--target` values. Kept separate from `skillport::Target`
+/// so the CLI's arg-parsing enum (and its clap `ValueEnum` labels) don't leak
+/// into the library; `into()` maps it 1:1.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum TargetArg {
+    Claude,
+}
+
+impl From<TargetArg> for skillport::Target {
+    fn from(arg: TargetArg) -> Self {
+        match arg {
+            TargetArg::Claude => skillport::Target::Claude,
+        }
+    }
+}
+
+impl TargetArg {
+    /// The `--json` `target` label for this value (DEC-005).
+    fn label(self) -> &'static str {
+        match self {
+            TargetArg::Claude => "claude",
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -54,12 +84,13 @@ fn main() -> ExitCode {
             json,
             sarif,
             strict,
-        } => lint(&path, json, sarif, strict),
+            target,
+        } => lint(&path, json, sarif, strict, target),
     }
 }
 
 /// Run the `lint` subcommand and return the process exit code.
-fn lint(path: &Path, json: bool, sarif: bool, strict: bool) -> ExitCode {
+fn lint(path: &Path, json: bool, sarif: bool, strict: bool, target: Option<TargetArg>) -> ExitCode {
     // Usage error BEFORE walking (`walk` is total and returns an empty
     // collection for a missing path — the CLI must check existence itself,
     // per the spec's exit-code table and Notes).
@@ -69,12 +100,15 @@ fn lint(path: &Path, json: bool, sarif: bool, strict: bool) -> ExitCode {
     }
 
     let collection = walk(path);
-    let report = Report::from_collection(&collection, skillport::lint_skill);
+    let rule_target: Option<skillport::Target> = target.map(Into::into);
+    let report = Report::from_collection(&collection, |s| {
+        skillport::lint_skill_with_target(s, rule_target)
+    });
 
     if sarif {
         println!("{}", emit::sarif(&report));
     } else if json {
-        println!("{}", emit::json(&report, None));
+        println!("{}", emit::json(&report, target.map(TargetArg::label)));
     } else {
         print!("{}", emit::human(&report));
     }
