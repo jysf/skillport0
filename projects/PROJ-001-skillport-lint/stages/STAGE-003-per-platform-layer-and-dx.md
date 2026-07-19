@@ -99,9 +99,11 @@ doc work, not a rushed add-on.
 > Proposed decomposition — the Design cycle turns these into specs via
 > `just new-spec "<title>" STAGE-003`. Not yet scaffolded.
 
-- [ ] (not yet written) — Verify Claude's recognized frontmatter fields from
-  docs.claude.com; encode the `--target claude` set with source comments;
-  resolve the `allowed-tools.format` downgrade question from the docs.
+- [~] SPEC-011 (design) — `--target claude` (first verified per-platform layer,
+  DEC-002): recognized-field widening from **code.claude.com/docs/en/skills** (each
+  fact source-commented) + `allowed-tools.format`→info (Claude accepts a YAML list,
+  confirmed) + `--json` `target:"claude"`. Open-spec rules unchanged. Design did the
+  primary-doc research.
 - [x] SPEC-010 (shipped 2026-07-18, PR #10) — Real-tokenizer `body.size` (info):
   `body_token_count` via `tiktoken-rs` cl100k_base (proxy; DEC-010), threshold
   ~5000, in `check_body`. **Open-spec catalog now 100% implemented.**
