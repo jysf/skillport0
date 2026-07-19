@@ -7,7 +7,7 @@
 task:
   id: SPEC-014
   type: story                      # epic | story | task | bug | chore
-  cycle: build  # frame | design | build | verify | ship
+  cycle: ship  # frame | design | build | verify | ship
   blocked: false
   priority: high
   complexity: M                    # S | M | L  (L means split it)
@@ -58,15 +58,32 @@ cost:
     - cycle: build
       agent: claude-sonnet-5
       interface: claude-code
+      tokens_total: 78703
+      estimated_usd: 0.52
+      duration_minutes: 7
+      recorded_at: 2026-07-18
+      notes: "metered Sonnet build subagent; tokens_total = subagent_tokens. estimated_usd = tokens x repo rate 6.60. duration wall-clock. Added .github/workflows/release.yml (5-target matrix + gh-based release job); actionlint clean + local archive round-trip proven."
+    - cycle: verify
+      agent: claude-opus-4-8
+      interface: claude-code
+      tokens_total: 67588
+      estimated_usd: 0.45
+      duration_minutes: 6
+      recorded_at: 2026-07-18
+      notes: "metered Opus verify subagent; ran actionlint + all gates + a local archive round-trip, reasoned about the tag-only release guard (workflow_dispatch cannot create a Release) and confirmed the musl leg is a real cross. APPROVED, 0 punch-list."
+    - cycle: ship
+      agent: claude-opus-4-8
+      interface: claude-code
       tokens_total: null
       estimated_usd: null
       duration_minutes: null
       recorded_at: 2026-07-18
-      notes: "metered subagent build; added .github/workflows/release.yml (5-target matrix + gh-based release job); orchestrator fills tokens_total/duration/estimated_usd from the Agent result at ship"
+      notes: "main-loop, not separately metered (ship cycle)"
   totals:
-    tokens_total: 0
-    estimated_usd: 0
-    session_count: 0
+    tokens_total: 146291
+    estimated_usd: 0.97
+    session_count: 4
+shipped_at: 2026-07-18
 ---
 
 # SPEC-014: release workflow — cross-platform binaries on tag
@@ -317,22 +334,36 @@ Process-focused: how did the build go? What friction did the spec create?
 from the process-focused build reflection above.*
 
 1. **What would I do differently next time?**
-   — <answer>
+   — The `workflow_dispatch`-as-dry-path design was the key move: a release workflow's
+   true behavior only fires on a human-only tag push, so building in a
+   no-Release-created manual path made the whole build/archive/checksum matrix
+   CI-exercisable and gave verify something real to reason about instead of pure static
+   review. General pattern for any "only-fires-on-a-privileged-trigger" automation:
+   add a safe dry trigger that exercises everything up to the irreversible step.
 
 2. **Does any template, constraint, or decision need updating?**
-   — <answer — if yes but not done this session, record it in
-   `/guidance/signals.yaml`: `type: lesson` (with its N-count) for a recurring
-   coding pattern, `type: process-debt` for tooling/process friction. A close
-   then forces the decision. See `docs/signals.md`.>
+   — No. DEC-009 sequenced this; DEC-005 held (0 lines under `src/`/`Cargo.*`). Worth a
+   `type: lesson` signal `dry-trigger-for-privileged-automation` (N=1, watch): give
+   tag-/deploy-/publish-gated workflows a `workflow_dispatch` (or equivalent) dry path
+   that runs everything except the irreversible action, so they're testable pre-fire.
 
 3. **Is there a follow-up spec I should write now before I forget?**
-   — <answer>
+   — The STAGE-004 backlog continues: SPEC-015 (crates.io publish — re-confirm the name
+   is free, package + the human-only `cargo publish`), SPEC-016 (Action downloads the
+   release binary instead of `cargo install --git`), SPEC-017 (cut v0.1.0 — CHANGELOG +
+   README install matrix + the human-only tag push, which is also the first real
+   end-to-end test of this workflow). SPEC-015 is next. Recommend the human trigger a
+   `workflow_dispatch` run of release.yml once (creates no Release) to smoke-test the
+   full 5-leg matrix before SPEC-017 cuts the real tag.
 
 4. **Where was the worst defect caught?** — one word from a fixed vocabulary so
    the defect-escape distribution is greppable across specs:
    `design` | `build` | `verify` | `ship` | `escaped` (reached prod/runtime) |
    `none` (clean first try).
-   — <one word>
+   — none
    *(Runtime/operational defects — the escape-prone class — only exist once the
    artifact meets its real host. `escaped` here is a signal to strengthen the
-   §12 behavioral pre-flight for that surface.)*
+   §12 behavioral pre-flight for that surface. Caveat here: the full 5-leg matrix is
+   only exercised at the first human `workflow_dispatch`/tag — a real cross-runner
+   defect could still surface there. Verify caught nothing; the dry-run design lowers
+   but doesn't zero that escape risk.)*

@@ -105,12 +105,14 @@ stage progresses).
   `cargo publish --dry-run` CI guard. Proven by dry-run exit 0. No runtime code / no
   contract change. Crate name `skillport` confirmed free on crates.io (re-confirm at
   SPEC-015). Verify APPROVED, 0 punch-list, clean first try.
-- [~] SPEC-014 (build) — **Release workflow** (M): `.github/workflows/release.yml`
-  cross-compiling the DEC-009 5-target matrix (macOS arm64+x86_64, Linux
-  x86_64-gnu+aarch64-musl, Windows x86_64) on `v*`, strip + archive + sha256 + attach
-  to the Release via `gh`; provenance `build-info.txt`. `workflow_dispatch` dry path
-  builds+uploads artifacts without creating a Release (CI-testable without a tag). No
-  src/contract change; the real tag push is human-only.
+- [x] SPEC-014 (shipped 2026-07-18, PR #14) — **Release workflow** (M):
+  `.github/workflows/release.yml` cross-compiling the DEC-009 5-target matrix (macOS
+  arm64+x86_64, Linux x86_64-gnu + aarch64-musl via `cross`, Windows x86_64) on `v*`,
+  strip + archive + sha256 + attach to the Release via `gh` (no third-party release
+  action); provenance `build-info.txt`. `workflow_dispatch` dry path builds+uploads
+  artifacts without creating a Release. No src/contract change. Verify APPROVED,
+  0 punch-list. **Human smoke-test recommended:** trigger a `workflow_dispatch` run
+  once (creates no Release) to exercise the full 5-leg matrix before SPEC-017.
 - [ ] (not yet written) SPEC-015 — **crates.io publish** (S/M): finalize packaging +
   a `cargo publish` path (job or documented manual first-publish). **Human-only trigger**
   (`cargo publish` token, irreversible) — Claude prepares, human runs.
@@ -121,7 +123,7 @@ stage progresses).
   install matrix + `just next-version`; verify each channel installs. **Human-only**:
   push the `v0.1.0` tag, trigger publish.
 
-**Count:** 1 shipped / 0 active / 4 pending (SPEC-013 shipped; SPEC-014 next; SPEC-015…017 proposed)
+**Count:** 2 shipped / 0 active / 3 pending (SPEC-013, SPEC-014 shipped; SPEC-015 next; SPEC-016…017 proposed)
 
 ## Design Notes
 

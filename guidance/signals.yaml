@@ -180,3 +180,16 @@ signals:
     last_touched: 2026-07-18
     raised_by: claude
     notes: "Below N=3, not codified. Reusable beyond skillport: any doc-that-mirrors-code (CLI help, config reference) is a drift candidate. [STAGE-003 close 2026-07-18: recorded + walked, kept watch]"
+
+  # --- lesson: raised at SPEC-014 ship (2026-07-18) ---------------------------
+  - id: dry-trigger-for-privileged-automation
+    type: lesson
+    summary: "An automation that only fires on a privileged/irreversible trigger (a v* tag, a deploy, a publish) should also expose a safe dry trigger that runs everything EXCEPT the irreversible step, so it's testable before it fires for real."
+    evidence: "N=1 (SPEC-014) — release.yml's true behavior only fires on a human-only v* tag push; adding a workflow_dispatch path that builds/archives/checksums the whole matrix but skips the Release-create step made the build path CI-exercisable and gave verify something real to check."
+    bar: "N=3 same-outcome"
+    status: watch
+    disposition_at: stage-close
+    first_flagged: 2026-07-18
+    last_touched: 2026-07-18
+    raised_by: claude
+    notes: "Below N=3. Watch across STAGE-004's remaining release specs (SPEC-015 publish, SPEC-017 tag-cut) — each is another privileged-trigger automation where the dry-path habit applies. [STAGE-004: recorded at SPEC-014 ship]"
