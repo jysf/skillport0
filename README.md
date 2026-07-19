@@ -183,6 +183,7 @@ jobs:
           path: skills        # default: "."
           strict: "false"      # treat warnings as failures
           upload-sarif: "true" # upload to code-scanning
+          version: "latest"    # which skillport release to install
 ```
 
 Findings surface as annotations on the PR and in the repo's **Security ›
@@ -191,9 +192,11 @@ Code scanning** tab. The Action needs no secret beyond the default
 for a complete example workflow, and this repo's own [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 for the `rust` / `dogfood` / `licenses` gates that verify skillport itself.
 
-> v0 builds skillport from source (`cargo install --git`) since it isn't on
-> crates.io yet — expect the first run to take a minute or two. A released
-> binary will make this fast; see `action.yml` for the note.
+> The Action downloads the prebuilt `skillport` binary for the runner's
+> platform (fast) and verifies its checksum. It falls back to a from-source
+> build (`cargo install --git`, a minute or two) when no matching release/
+> asset exists yet (e.g. before `v0.1.0`) or on an unsupported platform. Use
+> the `version` input to pin a specific release (default `"latest"`).
 
 ## Layout
 

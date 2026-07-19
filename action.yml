@@ -17,18 +17,36 @@ inputs:
     description: "Upload the SARIF results to GitHub code-scanning."
     required: false
     default: "true"
+  version:
+    description: "Which skillport release to install (a version like \"0.1.0\", or \"latest\")."
+    required: false
+    default: "latest"
 
 runs:
   using: "composite"
   steps:
-    - name: Ensure Rust toolchain
+    # SPEC-016: download the prebuilt release binary for the runner's
+    # OS/arch (fast) instead of compiling from source on every run. Falls
+    # back to a from-source build (below) when no release/asset exists yet
+    # (pre-v0.1.0) or the platform is unsupported.
+    - name: Install skillport (prebuilt)
+      id: prebuilt
+      shell: bash
+      env:
+        RUNNER_OS: ${{ runner.os }}
+        RUNNER_ARCH: ${{ runner.arch }}
+        VERSION: ${{ inputs.version }}
+      run: "$GITHUB_ACTION_PATH/scripts/install-release.sh"
+
+    - name: Ensure Rust toolchain (fallback)
+      if: steps.prebuilt.outputs.installed != 'true'
       uses: dtolnay/rust-toolchain@stable
 
-    # v0: build from source since skillport isn't published to crates.io yet
-    # (see SPEC-009 Notes). Once a release ships, swap this for downloading a
-    # released binary / `cargo install skillport` — much faster than a
-    # from-source `cargo install --git` on every consumer run.
-    - name: Install skillport
+    # Fallback path — identical to today's behavior, kept so nothing
+    # regresses for consumers before a release exists / on an unsupported
+    # platform.
+    - name: Install skillport from source (fallback)
+      if: steps.prebuilt.outputs.installed != 'true'
       shell: bash
       run: cargo install --git https://github.com/jysf/skillport skillport --locked
 

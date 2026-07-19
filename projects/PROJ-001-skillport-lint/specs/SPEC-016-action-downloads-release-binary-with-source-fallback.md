@@ -272,28 +272,42 @@ satisfies `test-before-implementation`):
 
 *Filled in at the end of the **build** cycle, before advancing to verify.*
 
-- **Branch:**
-- **PR (if applicable):**
-- **All acceptance criteria met?** yes/no
+- **Branch:** `feat/spec-016-action-download`
+- **PR (if applicable):** none yet (build cycle only; not opened by this agent)
+- **All acceptance criteria met?** yes
 - **New decisions emitted:**
-  - `DEC-NNN` — <title> (if any)
+  - none
 - **Deviations from spec:**
-  - [list]
+  - `actionlint action.yml` cannot be run as a bare CLI arg — actionlint 1.7.12
+    parses any directly-passed YAML file as a *workflow* (requires `on`/`jobs`),
+    not as a composite action, so `actionlint action.yml` alone always fails
+    with "jobs section is missing" regardless of the action.yml's content.
+    Verified instead via actionlint's documented local-action resolution: a
+    temporary workflow with `uses: ./` (referencing this repo's action) was
+    added, linted (0 issues), then removed — not part of the committed diff.
+    This is a tooling-invocation gap in the spec's Failing Tests wording, not
+    a defect in `action.yml`.
 - **Follow-up work identified:**
-  - [any new specs for the stage's backlog]
+  - none
 
 ### Build-phase reflection (3 questions, short answers)
 
 Process-focused: how did the build go? What friction did the spec create?
 
 1. **What was unclear in the spec that slowed you down?**
-   — <answer>
+   — Nothing about the deliverable itself; the only friction was `actionlint
+   action.yml` not being a literal runnable command against this actionlint
+   version (see Deviations) — the spec's Failing Tests line assumes direct
+   top-level linting works, but actionlint only validates composite actions
+   through a referencing workflow's `uses: ./`.
 
 2. **Was there a constraint or decision that should have been listed but wasn't?**
-   — <answer>
+   — No — DEC-009/DEC-005 and the SPEC-014 archive/layout reference were
+   sufficient to build this without ambiguity.
 
 3. **If you did this task again, what would you do differently?**
-   — <answer>
+   — Same approach; would just note the actionlint local-action-resolution
+   trick up front instead of discovering it empirically.
 
 ---
 
