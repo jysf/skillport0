@@ -1,9 +1,9 @@
 ---
 project:
   id: PROJ-002
-  status: active                    # framed 2026-07-19 (pivoted to before PROJ-001's release — see note)
-  activity: framing
-  priority: high
+  status: on_hold                   # SHELVED 2026-07-19 after the agnix discovery spike — see banner
+  activity: null
+  priority: low
   target_ship: null
 
 repo:
@@ -35,13 +35,35 @@ value:
 
 # PROJ-002: The audit (library health + security + provenance)
 
-> **STATUS: ACTIVE (framing) — started 2026-07-19.** Framed while PROJ-001 is
-> **code-complete but not yet released** (v0.1.0 tag on hold pending a project
-> **rename** — the `skillport` name collides with existing apps). This was a
-> deliberate call to keep momentum: the release is blocked on a human naming
-> decision, so the `audit` wave's design advances in parallel. The eventual rename
-> spec sweeps PROJ-002 code along with PROJ-001, so no work is lost. Stages/specs
-> continue repo-wide: **first stage = STAGE-005, first spec = SPEC-018.**
+> **STATUS: SHELVED / ON_HOLD — 2026-07-19.** The whole **skillport** project (PROJ-001
+> lint + PROJ-002 audit) is on hold as a product. **Decision (user):** stop building.
+> **Why:** a competitive discovery spike found that **agnix** (`npx agnix`, v0.40.0) is a
+> mature, cited, multi-tool validator that decisively out-covers skillport's lint layer
+> (202 vs 1 error on 1,449 real skills) **and already occupies the security + config-
+> governance lanes** PROJ-002 planned (STAGE-006 `--security` ≈ agnix `CC-SK-006/007`; the
+> parked AGENTS.md idea ≈ agnix `AGM-*`). Both suspected skillport "false-error" bugs were
+> refuted (docs + corpus + agnix's own rules). Only two skills-native gaps survive —
+> **provenance/drift** (agnix is a stateless validator; 0 provenance rules) and
+> **triggering/description-routing measurement** (unmeasured by anyone) — and neither is a
+> continuation of the current linter/audit substrate; both would be new products. The
+> release stays **uncut** (no v0.1.0 tag/publish), the rename is dropped, and the SPEC-018
+> build is left **unmerged** on `feat/spec-018-audit-inventory`.
+>
+> **Full decision record (the ROI of this project):**
+> - `reports/competitive-agnix.md` — rule-by-rule vs agnix + secondary scanners (agentlint
+>   ships the permissions/drift model but not for SKILL.md; the provenance lane is open but
+>   narrowing).
+> - `reports/pivot-discovery.md` — real-corpus dogfood, primary-doc bug verification, and
+>   the triggering spike.
+>
+> **Transferable lesson:** validate the *differentiation* thesis against the real
+> competitor on real data **before** heavy build — that ~20-minute agnix run should have
+> been a pre-mortem, not a post-mortem after 17 shipped specs. If revisited, the only live
+> bets are triggering-measurement (cheap, blinded experiment first) and skills provenance —
+> pursued as new products, not as a skillport continuation.
+>
+> --- *Below: the pre-shelve framing (2026-07-19), kept as an accurate record of what was
+> decided before the spike changed the picture.* ---
 >
 > **Framing decisions (2026-07-19, from the user):**
 > - **One `audit` command** with sectioned output + focus flags (e.g. `--security`),

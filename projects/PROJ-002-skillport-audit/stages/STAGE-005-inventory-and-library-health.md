@@ -5,8 +5,8 @@
 
 stage:
   id: STAGE-005                     # stable, zero-padded, continuous across the repo
-  status: active                    # proposed | active | shipped | cancelled | on_hold
-  priority: high                    # critical | high | medium | low
+  status: on_hold                   # SHELVED 2026-07-19 (skillport project on hold — see brief)
+  priority: low                     # critical | high | medium | low
   target_complete: null             # optional: YYYY-MM-DD
 
 project:
@@ -97,7 +97,12 @@ code-complete but pre-release/rename — see the project brief.)
 Proposed decomposition (turned into specs via `just new-spec` as the stage progresses).
 Repo-wide numbering continues from SPEC-017.
 
-- [~] **SPEC-018 — `audit` command + inventory** *(build)* — the `audit <path>` subcommand
+> **SHELVED 2026-07-19** — skillport put on hold after the agnix discovery spike (see the
+> project brief + `reports/pivot-discovery.md`). The backlog below was **not** built. SPEC-018
+> was designed and a build ran, but it is left **unmerged/unverified** on branch
+> `feat/spec-018-audit-inventory` (intentionally not merged). SPEC-019/020 were never started.
+
+- [?] **SPEC-018 — `audit` command + inventory** *(shelved; unmerged build on `feat/spec-018-audit-inventory`)* — the `audit <path>` subcommand
   (clap, alongside `lint`); walk → per-skill **inventory** (name / path / **token count**
   as the headline metric; bytes+lines in `--json`) + summary (skills, tokens_total,
   unreadable-counted); human report + a **separate** versioned `--json` audit schema
@@ -111,7 +116,7 @@ Repo-wide numbering continues from SPEC-017.
   tokenizer), likely-dead stubs, and description-vs-body coherence, as advisory health
   flags. (May split if it runs large.)
 
-**Count:** 0 shipped / 0 active / 3 pending (SPEC-018 designed next)
+**Count:** 0 shipped / 0 active / 3 not-built (SHELVED — SPEC-018 designed + an unmerged build; SPEC-019/020 never started)
 
 ## Design Notes
 
